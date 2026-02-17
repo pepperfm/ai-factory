@@ -6,7 +6,7 @@ description: >-
   Includes production security audit. Use when user says "dockerize", "add docker", "docker compose",
   "containerize", or "setup docker".
 argument-hint: "[--audit]"
-allowed-tools: Read Edit Glob Grep Write Bash(git *) Bash(docker *) AskUserQuestion WebSearch WebFetch
+allowed-tools: Read Edit Glob Grep Write Bash(git *) Bash(docker *) AskUserQuestion Questions WebSearch WebFetch
 disable-model-invocation: true
 metadata:
   author: AI Factory

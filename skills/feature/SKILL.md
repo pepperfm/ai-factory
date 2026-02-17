@@ -2,7 +2,7 @@
 name: ai-factory.feature
 description: End-to-end feature development. Creates git branch, plans implementation via /ai-factory.task, then executes via /ai-factory.implement — full cycle without manual steps. Use when user says "new feature", "start feature", "implement feature", or "add feature".
 argument-hint: "[--parallel | --list | --cleanup <branch>] <feature description>"
-allowed-tools: Bash(git *) Bash(cd *) Bash(cp *) Bash(mkdir *) Bash(basename *) Read Write Skill AskUserQuestion
+allowed-tools: Bash(git *) Bash(cd *) Bash(cp *) Bash(mkdir *) Bash(basename *) Read Write Skill AskUserQuestion Questions
 disable-model-invocation: true
 ---
 

@@ -2,7 +2,7 @@
 name: ai-factory.task
 description: Create a step-by-step implementation plan for a feature or task. Breaks down work into actionable tasks tracked via the task system. Use when user says "plan", "create tasks", "break down", or "make a plan for".
 argument-hint: <task description>
-allowed-tools: Read Write Glob Grep Bash(git *) TaskCreate TaskUpdate TaskList AskUserQuestion
+allowed-tools: Read Write Glob Grep Bash(git *) TaskCreate TaskUpdate TaskList AskUserQuestion Questions
 disable-model-invocation: false
 ---
 
