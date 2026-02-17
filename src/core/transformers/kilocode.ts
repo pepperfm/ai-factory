@@ -1,20 +1,6 @@
-import type { AgentTransformer, TransformResult } from '../transformer.js';
-import { sanitizeName, extractFrontmatterName, replaceFrontmatterName } from '../transformer.js';
+import { SpecCompliantTransformer } from './spec-compliant.js';
 
-export class KiloCodeTransformer implements AgentTransformer {
-  transform(skillName: string, content: string): TransformResult {
-    const name = extractFrontmatterName(content);
-    const sanitized = name ? sanitizeName(name) : skillName;
-    const newContent = name ? replaceFrontmatterName(content, sanitized) : content;
-
-    return {
-      targetDir: sanitized,
-      targetName: 'SKILL.md',
-      content: newContent,
-      flat: false,
-    };
-  }
-
+export class KiloCodeTransformer extends SpecCompliantTransformer {
   getWelcomeMessage(): string[] {
     return [
       '1. Open Kilo Code in this directory',

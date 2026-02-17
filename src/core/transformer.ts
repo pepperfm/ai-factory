@@ -1,6 +1,7 @@
 import { DefaultTransformer } from './transformers/default.js';
 import { KiloCodeTransformer } from './transformers/kilocode.js';
 import { AntigravityTransformer } from './transformers/antigravity.js';
+import { SpecCompliantTransformer } from './transformers/spec-compliant.js';
 
 export interface TransformResult {
   targetDir: string;
@@ -56,6 +57,7 @@ export function simplifyFrontmatter(content: string): string {
 const registry: Record<string, () => AgentTransformer> = {
   kilocode: () => new KiloCodeTransformer(),
   antigravity: () => new AntigravityTransformer(),
+  windsurf: () => new SpecCompliantTransformer(),
 };
 
 export function getTransformer(agentId: string): AgentTransformer {
