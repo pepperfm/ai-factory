@@ -27,8 +27,14 @@ ai-factory init
 
 ## Installation
 
+### Using npm
 ```bash
 npm install -g ai-factory
+```
+
+### Using mise
+```bash
+mise use -g npm:ai-factory
 ```
 
 ## Quick Start
