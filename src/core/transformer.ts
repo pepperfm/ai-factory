@@ -58,6 +58,7 @@ const registry: Record<string, () => AgentTransformer> = {
   kilocode: () => new KiloCodeTransformer(),
   antigravity: () => new AntigravityTransformer(),
   windsurf: () => new SpecCompliantTransformer(),
+  universal: () => new SpecCompliantTransformer(),
 };
 
 export function getTransformer(agentId: string): AgentTransformer {
