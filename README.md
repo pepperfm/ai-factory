@@ -56,6 +56,19 @@ Then open your AI agent and start working:
 /ai-factory
 ```
 
+
+## Usage
+
+If the package is installed:
+```bash
+ai-factory init
+```
+
+Or running without installation via `npx`:
+```bash
+npx ai-factory init
+```
+
 ### Example Workflow
 
 ```bash
