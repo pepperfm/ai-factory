@@ -4,7 +4,7 @@
 
 AI Factory provides a set of **workflow skills** that form the core development loop: plan, improve, implement, fix, evolve. Each skill is a step in the pipeline — they connect to each other and share context through plan files and patches.
 
-![workflow](https://github.com/lee-to/ai-factory/raw/main/art/workflow.png)
+![workflow](https://github.com/lee-to/ai-factory/raw/1.x/art/workflow.png)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐

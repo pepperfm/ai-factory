@@ -1,4 +1,4 @@
-![logo](https://github.com/lee-to/ai-factory/raw/main/art/promo.png)
+![logo](https://github.com/lee-to/ai-factory/raw/1.x/art/promo.png)
 
 # AI Factory
 
@@ -122,7 +122,7 @@ AI Factory can generate and maintain your project docs with a single command:
 
 ---
 
-![happy](https://github.com/lee-to/ai-factory/raw/main/art/happy.png)
+![happy](https://github.com/lee-to/ai-factory/raw/1.x/art/happy.png)
 
 ## Links
 
