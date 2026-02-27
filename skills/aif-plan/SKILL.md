@@ -38,6 +38,7 @@ Use this context when:
 - Treat `## Active Summary (input for /aif-plan)` as an additional requirements source
 - Carry over constraints/decisions into tasks and plan settings
 - Prefer the summary over raw notes; use `## Sessions` only when you need deeper rationale
+ - If the user omitted the feature description, use `Active Summary -> Topic:` as the default description
 
 ### Step 0.1: Ensure Git Repository
 
@@ -62,6 +63,10 @@ full        → Full mode (first word)
 - Remaining text becomes the description
 - `--list` and `--cleanup` execute immediately and **STOP** (do NOT continue to Step 1+)
 
+**If the description is empty:**
+- If `.ai-factory/RESEARCH.md` exists and its `Active Summary` has a non-empty `Topic:`, default the description to that topic (no extra user input required)
+- Otherwise, ask the user for a short feature description
+
 **If `--list` is present**, jump to [--list Subcommand](#--list-subcommand).
 **If `--cleanup` is present**, jump to [--cleanup Subcommand](#--cleanup-subcommand).
 
@@ -77,6 +82,10 @@ Options:
 1. Full (Recommended) — creates git branch, asks preferences, full plan
 2. Fast — quick plan, no branch, saves to PLAN.md
 ```
+
+If the user did not provide a description and `.ai-factory/RESEARCH.md` exists:
+- Mention that you will default the description to the `Active Summary` topic
+- Only ask for `full` vs `fast` (no description prompt needed)
 
 For concrete parsing examples and expected behavior per command shape, read `references/EXAMPLES.md` (Argument Parsing).
 
