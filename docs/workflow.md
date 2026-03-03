@@ -209,14 +209,16 @@ High-level project planning. Creates `.ai-factory/ROADMAP.md` — a strategic ch
 
 Two modes — **fast** (no branch, saves to `.ai-factory/PLAN.md`) and **full** (creates git branch, asks about testing/logging/docs and optional roadmap milestone linkage when `.ai-factory/ROADMAP.md` exists, saves to `.ai-factory/plans/<branch>.md`). Analyzes requirements, explores codebase for patterns, creates tasks with dependencies. For 5+ tasks, includes commit checkpoints. For parallel work on multiple features, use `full --parallel` to create isolated worktrees.
 
-### `/aif-improve [prompt]` — refine the plan
+### `/aif-improve [--list] [@plan-file] [prompt]` — refine the plan
 
 ```
 /aif-improve
+/aif-improve --list
+/aif-improve @my-custom-plan.md
 /aif-improve add validation and error handling
 ```
 
-Second-pass analysis. Finds missing tasks (migrations, configs, middleware), fixes dependencies, removes redundant work. Shows a diff-like report before applying changes.
+Second-pass analysis. Finds missing tasks (migrations, configs, middleware), fixes dependencies, removes redundant work. Plan source priority: `@plan-file` argument, then branch-based `.ai-factory/plans/<branch>.md`, then `.ai-factory/PLAN.md`, then `.ai-factory/FIX_PLAN.md`. `--list` is a read-only discovery mode that shows available plan files and exits. Shows a diff-like report before applying changes.
 
 ### `/aif-loop [new|resume|status|stop|list|history|clean] [task or alias]` — iterative quality loop
 
@@ -237,11 +239,13 @@ For full contracts and state transition rules, see [Reflex Loop](loop.md).
 
 ```
 /aif-implement        # Continue from where you left off
+/aif-implement --list # Show available plans only (no execution)
+/aif-implement @my-custom-plan.md # Execute using an explicit plan file
 /aif-implement 5      # Start from task #5
 /aif-implement status # Check progress
 ```
 
-Reads past patches from `.ai-factory/patches/` to learn from previous mistakes, then executes tasks one by one with commit checkpoints. If the plan has `Docs: yes`, runs `/aif-docs` after completion.
+Reads past patches from `.ai-factory/patches/` to learn from previous mistakes, then executes tasks one by one with commit checkpoints. Plan source priority: `@plan-file` argument, then branch-based `.ai-factory/plans/<branch>.md`, then `.ai-factory/PLAN.md`, then `.ai-factory/FIX_PLAN.md` (redirects to `/aif-fix`). `--list` is a read-only discovery mode that shows available plan files and exits. If the plan has `Docs: yes`, runs `/aif-docs` after completion.
 
 ### `/aif-verify [--strict]` — check completeness
 

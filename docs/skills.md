@@ -65,19 +65,22 @@ Creates or updates a strategic project roadmap:
 - Milestones are high-level goals (not granular tasks — that's `/aif-plan`)
 - `/aif-implement` automatically marks roadmap milestones done when work completes
 
-### `/aif-improve [prompt]`
+### `/aif-improve [--list] [@plan-file] [prompt]`
 Refine an existing plan with a second iteration:
 ```
 /aif-improve                                    # Auto-review: find gaps, missing tasks, wrong deps
+/aif-improve --list                             # Show available plans only (no refinement)
+/aif-improve @my-custom-plan.md                 # Improve an explicit plan file
 /aif-improve добавь валидацию и обработку ошибок # Improve based on specific feedback
 ```
-- Finds the active plan (`.ai-factory/PLAN.md` or branch-based `plans/<branch>.md`)
+- Plan source priority: `@plan-file` argument, then branch-based `.ai-factory/plans/<branch>.md`, then `.ai-factory/PLAN.md`, then `.ai-factory/FIX_PLAN.md`
+- `--list` mode is read-only: shows available plan files and exits
 - Performs deeper codebase analysis than the initial `/aif-plan` planning
 - Finds missing tasks (migrations, configs, middleware)
 - Fixes task dependencies and descriptions
 - Removes redundant tasks
 - Shows improvement report and asks for approval before applying
-- If no plan found — suggests running `/aif-plan` first
+- If no plan found — suggests running `/aif-plan` (feature/task) or `/aif-fix` (bugfix) first
 
 ### `/aif-loop [new|resume|status|stop|list|history|clean] [task or alias]`
 Runs a strict iterative Reflex Loop with phase-based execution and quality gates:
@@ -108,11 +111,14 @@ Runs a strict iterative Reflex Loop with phase-based execution and quality gates
 Executes the plan:
 ```
 /aif-implement        # Continue from where you left off
+/aif-implement --list # Show available plans only (no execution)
+/aif-implement @my-custom-plan.md # Execute using an explicit plan file
 /aif-implement 5      # Start from task #5
 /aif-implement status # Check progress
 ```
 - **Reads past patches** from `.ai-factory/patches/` before starting — learns from previous mistakes
-- Finds plan file (.ai-factory/PLAN.md or branch-based)
+- Finds plan file (`@plan-file` if provided; otherwise branch-based `.ai-factory/plans/<branch>.md`, then `.ai-factory/PLAN.md`, then `.ai-factory/FIX_PLAN.md` → redirects to `/aif-fix`)
+- `--list` mode is read-only: shows available plan files and exits
 - Executes tasks one by one
 - Prompts for commits at checkpoints
 - If plan has `Docs: yes` — runs `/aif-docs` after completion

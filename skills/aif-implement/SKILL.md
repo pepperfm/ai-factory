@@ -1,7 +1,7 @@
 ---
 name: aif-implement
 description: Execute implementation tasks from the current plan. Works through tasks sequentially, marks completion, and preserves progress for continuation across sessions. Use when user says "implement", "start coding", "execute plan", or "continue implementation".
-argument-hint: '[task-id or "status"]'
+argument-hint: '[--list] [@plan-file] [task-id or "status"]'
 allowed-tools: Read Write Edit Glob Grep Bash TaskList TaskGet TaskUpdate AskUserQuestion Questions
 disable-model-invocation: false
 ---
@@ -17,10 +17,38 @@ Execute tasks from the plan, track progress, and enable session continuation.
 **FIRST:** Determine what state we're in:
 
 ```
-1. Check for uncommitted changes (git status)
-2. Check for plan files (.ai-factory/PLAN.md or branch-named)
+1. Parse arguments:
+   - --list → list available plans only (no implementation; STOP)
+   - @<path> → explicit plan file override (highest priority)
+   - <number> → start from specific task
+   - status → status-only mode
+2. Check for uncommitted changes (git status)
 3. Check current branch
 ```
+
+### Step 0.list: List Available Plans (`--list`)
+
+If `$ARGUMENTS` contains `--list`, run read-only plan discovery and stop.
+
+```
+1. Get current branch:
+   git branch --show-current
+2. Convert branch to filename: replace "/" with "-", add ".md"
+3. Check existence of:
+   - .ai-factory/plans/<branch-name>.md
+   - .ai-factory/PLAN.md
+   - .ai-factory/FIX_PLAN.md
+4. Print plan availability summary and usage hints
+5. STOP.
+```
+
+**Important:** In `--list` mode:
+- Do not execute tasks
+- Do not modify files
+- Do not update TaskList statuses
+
+For detailed output format and examples, see:
+- `skills/aif-implement/references/IMPLEMENTATION-GUIDE.md` → "List Available Plans (`--list`)"
 
 ### Step 0.0: Resume / Recovery (after a break or after /clear)
 
@@ -35,7 +63,7 @@ If the user is resuming **the next day**, says the session was **abandoned**, or
 ```
 
 Then reconcile plan/task state:
-- Ensure the current plan file matches the current branch (PLAN.md takes priority; otherwise branch-named plan).
+- Ensure the current plan file matches the current branch (`@plan-file` override wins; otherwise branch-named plan takes priority over `PLAN.md`).
 - Compare `TaskList` statuses vs plan checkboxes.
   - If code changes for a task appear already implemented but the task is not marked completed, verify quickly and then `TaskUpdate(..., status: "completed")` and update the plan checkbox.
   - If a task is marked completed but the corresponding code is missing (rebase/reset happened), mark it back to pending and discuss with the user.
@@ -137,26 +165,51 @@ If any rule is violated — fix the output before presenting it to the user.
 
 ### Step 0.1: Find Plan File
 
+**If `$ARGUMENTS` contains `@<path>`:**
+
+Use this explicit plan file and skip automatic plan discovery.
+
+```
+1. Extract path after "@"
+2. Resolve relative to project root (absolute paths are also valid)
+3. If file does not exist:
+   "Plan file not found: <path>
+    Provide an existing markdown plan file, for example:
+    - /aif-implement @.ai-factory/PLAN.md
+    - /aif-implement @.ai-factory/plans/feature-user-auth.md"
+   → STOP
+4. If file is .ai-factory/FIX_PLAN.md:
+   → invoke /aif-fix (ownership + cleanup workflow) and STOP
+5. Otherwise use this file as the active plan
+```
+
+Then continue with normal execution using the selected plan file.
+
+**If no `@<path>` override is provided, check plan files in this order:**
+
 **Check for plan files in this order:**
 
 ```
-1. .ai-factory/PLAN.md exists? → Use it (from /aif-plan fast)
-2. No .ai-factory/PLAN.md → Check current git branch:
+1. Check current git branch:
    git branch --show-current
-   → Look for .ai-factory/plans/<branch-name>.md (e.g., .ai-factory/plans/feature-user-auth.md)
-3. No plan files at all → Check .ai-factory/FIX_PLAN.md
+   → Convert branch name to filename: replace "/" with "-", add ".md"
+   → Look for .ai-factory/plans/<branch-name>.md (e.g., feature/user-auth → .ai-factory/plans/feature-user-auth.md)
+2. No branch-based plan → Check .ai-factory/PLAN.md
+3. No branch-based plan and no .ai-factory/PLAN.md → Check .ai-factory/FIX_PLAN.md
    → If exists: invoke /aif-fix (handles its own workflow with patches) and STOP
 ```
 
 **Priority:**
-1. `.ai-factory/PLAN.md` - always takes priority (from `/aif-plan fast`)
-2. Branch-named file - if no .ai-factory/PLAN.md (from `/aif-plan full`)
-3. `.ai-factory/FIX_PLAN.md` - redirect to `/aif-fix` (from `/aif-fix` plan mode)
+1. `@<path>` argument - explicit user-selected plan file
+2. Branch-named file (from `/aif-plan full`) - if it matches current branch
+3. `.ai-factory/PLAN.md` (from `/aif-plan fast`) - fallback when no branch-based plan exists
+4. `.ai-factory/FIX_PLAN.md` - redirect to `/aif-fix` (from `/aif-fix` plan mode)
 
 **Read the plan file** to understand:
 - Context and settings (testing, logging preferences)
 - Commit checkpoints (when to commit)
 - Task dependencies
+- Task checklist format (`- [ ]` / `- [x]`) to keep progress synced
 
 ### Step 1: Load Current State
 
@@ -497,6 +550,19 @@ To merge and clean up later:
 /aif-implement
 ```
 Continues from next incomplete task.
+
+### List Available Plans
+```
+/aif-implement --list
+```
+Lists `.ai-factory/PLAN.md`, `.ai-factory/FIX_PLAN.md`, and current-branch `.ai-factory/plans/<branch>.md` (if present), then exits without implementation.
+
+### Use Explicit Plan File
+```
+/aif-implement @my-custom-plan.md
+/aif-implement @.ai-factory/plans/feature-user-auth.md status
+```
+Uses the provided plan file instead of auto-detecting by branch/default files.
 
 ### Start from Specific Task
 ```

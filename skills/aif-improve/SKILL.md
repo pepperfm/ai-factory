@@ -1,7 +1,7 @@
 ---
 name: aif-improve
-description: Refine and enhance an existing implementation plan with a second iteration. Re-analyzes the codebase, checks for gaps, missing tasks, wrong dependencies, and improves the plan quality. Use after /aif-plan to polish the plan before implementation.
-argument-hint: "[improvement prompt or empty for auto-review]"
+description: Refine and enhance an existing implementation plan with a second iteration. Re-analyzes the codebase, checks for gaps, missing tasks, wrong dependencies, and improves the plan quality. Use after /aif-plan to polish the plan before implementation, or to improve an existing /aif-fix plan.
+argument-hint: "[--list] [@plan-file] [improvement prompt or empty for auto-review]"
 allowed-tools: Read Write Edit Glob Grep Bash(git *) TaskCreate TaskUpdate TaskList TaskGet AskUserQuestion Questions
 disable-model-invocation: false
 ---
@@ -24,18 +24,57 @@ enhanced plan with better tasks, correct dependencies, more detail
 
 ### Step 0: Find the Plan
 
+**First parse arguments:**
+
+```
+- --list    → list available plans only (read-only, then STOP)
+- @<path>   → explicit plan file override (highest priority)
+- remaining argument text → optional improvement prompt
+```
+
+When both are present, `--list` wins and no refinement is executed.
+
+### Step 0.list: List Available Plans (`--list`)
+
+If `$ARGUMENTS` contains `--list`, run read-only discovery and stop.
+
+```
+1. Get current branch:
+   git branch --show-current
+2. Convert branch to filename: replace "/" with "-", add ".md"
+3. Check existence of:
+   - .ai-factory/plans/<branch-name>.md
+   - .ai-factory/PLAN.md
+   - .ai-factory/FIX_PLAN.md
+4. Print availability summary and usage hints:
+   - /aif-improve @<path> <optional prompt>
+   - /aif-improve <optional prompt>      # automatic priority
+5. If none found, suggest creating a plan via /aif-plan or /aif-fix
+6. STOP.
+```
+
+**Important:** In `--list` mode:
+- Do not execute refinement
+- Do not modify files
+- Do not update TaskList/plan content
+
 **Locate the active plan file using this priority:**
 
 ```
-1. .ai-factory/PLAN.md exists? → Use it (from /aif-plan fast)
-2. No .ai-factory/PLAN.md → Check current git branch:
+1. If `$ARGUMENTS` contains `@<path>`:
+   - Resolve the path (relative to project root; absolute paths allowed)
+   - If file exists → use it
+   - If missing → show "Plan file not found: <path>" and STOP
+2. No explicit `@<path>` override → Check current git branch:
    git branch --show-current
    → Convert branch name to filename: replace "/" with "-", add ".md"
-   → Look for .ai-factory/plans/<branch-name>.md
+   → Look for .ai-factory/plans/<branch-name>.md (from /aif-plan full)
    Example: feature/user-auth → .ai-factory/plans/feature-user-auth.md
+3. No branch-based plan → Check .ai-factory/PLAN.md (from /aif-plan fast)
+4. No branch-based plan and no .ai-factory/PLAN.md → Check .ai-factory/FIX_PLAN.md (from /aif-fix plan mode)
 ```
 
-**If NO plan file found at either location:**
+**If NO plan file found at any location:**
 
 ```
 No active plan found.
@@ -43,6 +82,7 @@ No active plan found.
 To create a plan first, use:
 - /aif-plan full <description>  — for a new feature (creates branch + plan)
 - /aif-plan fast <description>  — for a quick task plan
+- /aif-fix <bug description>    — for a bugfix plan (.ai-factory/FIX_PLAN.md)
 ```
 
 → **STOP here.** Do not proceed without a plan file.
@@ -175,7 +215,7 @@ Compare the plan against what you found. Categorize issues:
 
 **3.6: User-prompted improvements (if $ARGUMENTS provided)**
 
-If the user provided specific improvement instructions in `$ARGUMENTS`:
+If the user provided specific improvement instructions in `$ARGUMENTS` (excluding `--list` and `@<path>` tokens):
 - Apply the user's feedback to the plan
 - Look for tasks that need modification based on the prompt
 - Add new tasks if the user's prompt requires them
@@ -377,16 +417,47 @@ Apply? → Yes → Changes applied
 ```
 User: /aif-improve
 
+→ Branch: main
+→ No .ai-factory/plans/main.md found
 → No .ai-factory/PLAN.md found
-→ Branch: main (no feature branch)
+→ No .ai-factory/FIX_PLAN.md found
 → No plan file found
 
 "No active plan found. Create one first:
 - /aif-plan full <description>
-- /aif-plan fast <description>"
+- /aif-plan fast <description>
+- /aif-fix <bug description>"
 ```
 
-### Example 4: Plan already looks good
+### Example 4: Explicit plan file
+
+```
+User: /aif-improve @my-custom-plan.md add rollback and edge-case handling
+
+→ Explicit plan override: my-custom-plan.md
+→ Found plan: my-custom-plan.md
+→ User wants: rollback + edge-case handling
+→ Deep codebase analysis...
+→ Report prepared
+```
+
+### Example 5: List mode
+
+```
+User: /aif-improve --list
+
+## Available Plans
+Current branch: feature/user-auth
+- [x] .ai-factory/plans/feature-user-auth.md
+- [ ] .ai-factory/PLAN.md
+- [x] .ai-factory/FIX_PLAN.md
+
+Use:
+- /aif-improve @.ai-factory/plans/feature-user-auth.md
+- /aif-improve add validation and retries
+```
+
+### Example 6: Plan already looks good
 
 ```
 User: /aif-improve
