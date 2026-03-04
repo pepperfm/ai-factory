@@ -281,7 +281,7 @@ When a plan exists, run without arguments to execute:
 /aif-fix    # reads FIX_PLAN.md → applies fix → deletes plan
 ```
 
-Every fix creates a **self-improvement patch** in `.ai-factory/patches/`. Every patch makes future `/aif-implement` and `/aif-fix` smarter.
+Every fix creates a **self-improvement patch** in `.ai-factory/patches/`. Patches improve future workflow runs primarily through `/aif-evolve` (which distills them into `.ai-factory/skill-context/*`).
 
 ### `/aif-evolve` — improve skills from experience
 

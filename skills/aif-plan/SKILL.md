@@ -238,9 +238,13 @@ cp .ai-factory/DESCRIPTION.md "${WORKTREE}/.ai-factory/DESCRIPTION.md" 2>/dev/nu
 cp .ai-factory/ARCHITECTURE.md "${WORKTREE}/.ai-factory/ARCHITECTURE.md" 2>/dev/null
 cp .ai-factory/RESEARCH.md "${WORKTREE}/.ai-factory/RESEARCH.md" 2>/dev/null
 
-# Skill-context + evolve cursor (primary learning context)
+# Skill-context (primary learning context)
 cp -r .ai-factory/skill-context/ "${WORKTREE}/.ai-factory/skill-context/" 2>/dev/null
-cp .ai-factory/evolutions/patch-cursor.json "${WORKTREE}/.ai-factory/evolutions/patch-cursor.json" 2>/dev/null
+
+# Note: do not copy patch-cursor.json into a truncated patch set.
+# The parallel worktree copies only a limited number of patches for fallback context.
+# Copying the evolve cursor without the full patch history can cause /aif-evolve to skip patches
+# or trigger a partial rescan.
 
 # Limited patch fallback: copy only recent patches (latest 10 by filename)
 for patch in $(ls -1 .ai-factory/patches/*.md 2>/dev/null | sort | tail -n 10); do
