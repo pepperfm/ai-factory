@@ -19,7 +19,8 @@ Fix a specific bug or problem in the codebase. Supports two modes: immediate fix
 **If the file EXISTS:**
 - Read `.ai-factory/FIX_PLAN.md`
 - Inform the user: "Found existing fix plan. Executing fix based on the plan."
-- **Skip Steps 0.1 through 1** — go directly to **Step 2: Investigate the Codebase**, using the plan as your guide
+- Skip **Step 1** (problem intake/mode choice), but still run **Step 0.1** to load context
+- Then continue to **Step 2: Investigate the Codebase**, using the plan as your guide
 - Follow each step of the plan sequentially
 - After the fix is fully applied and verified, **delete** `.ai-factory/FIX_PLAN.md`:
   ```bash
@@ -41,13 +42,6 @@ Fix a specific bug or problem in the codebase. Supports two modes: immediate fix
 - Project architecture
 - Coding conventions
 
-**Read all patches from `.ai-factory/patches/`** if the directory exists:
-- Use `Glob` to find all `*.md` files in `.ai-factory/patches/`
-- Read each patch file to learn from past fixes
-- Pay attention to recurring patterns, root causes, and solutions
-- If the current problem resembles a past patch — apply the same approach or avoid the same mistakes
-- This is your accumulated experience. Use it.
-
 **Read `.ai-factory/skill-context/aif-fix/SKILL.md`** — MANDATORY if the file exists.
 
 This file contains project-specific rules accumulated by `/aif-evolve` from patches,
@@ -67,6 +61,16 @@ codebase conventions, and tech-stack analysis. These rules are tailored to the c
 
 **Enforcement:** After generating any output artifact, verify it against all skill-context rules.
 If any rule is violated — fix the output before presenting it to the user.
+
+**Patch fallback (limited, only when skill-context is missing):**
+
+- If `.ai-factory/skill-context/aif-fix/SKILL.md` does not exist and `.ai-factory/patches/` exists:
+  - Use `Glob` to find `*.md` files in `.ai-factory/patches/`
+  - Sort patch filenames ascending (lexical), then select the last **10** (or fewer if less exist)
+  - Read those selected patch files only
+  - Prioritize recurring **Root Cause** and **Prevention** patterns
+- If skill-context exists, do **not** read all patches by default.
+  - Optionally inspect a small, targeted subset of recent patches when tags/files clearly match the current bug.
 
 ### Step 1: Understand the Problem & Choose Mode
 

@@ -108,16 +108,17 @@ Read `.ai-factory/DESCRIPTION.md` if it exists:
 - Conventions
 - Non-functional requirements
 
-**1.3: Read patches (past mistakes)**
+**1.3: Read patches (limited fallback)**
 
-```
-Glob: .ai-factory/patches/*.md
-```
+Use patches as fallback context, not the default source:
 
-If patches exist, read them to understand:
-- What mistakes were made before
-- What patterns to avoid
-- What the plan should account for
+- If `.ai-factory/skill-context/aif-improve/SKILL.md` does not exist and `.ai-factory/patches/` exists:
+  - `Glob: .ai-factory/patches/*.md`
+  - Sort patch filenames ascending (lexical), then select the last **10** (or fewer if less exist)
+  - Read those selected patch files only
+  - Focus on reusable Prevention/Root Cause patterns that affect planning quality
+- If skill-context exists, do **not** read all patches by default.
+  - Optionally inspect a small targeted subset when refining around a known recurring issue.
 
 **Read `.ai-factory/skill-context/aif-improve/SKILL.md`** — MANDATORY if the file exists.
 

@@ -227,13 +227,29 @@ Copy context files so the worktree has full AI context:
 ```bash
 WORKTREE="../${DIRNAME}-<branch-name-with-hyphens>"
 
+# Ensure AI Factory directories exist before copy operations
+mkdir -p "${WORKTREE}/.ai-factory"
+mkdir -p "${WORKTREE}/.ai-factory/plans"
+mkdir -p "${WORKTREE}/.ai-factory/patches"
+mkdir -p "${WORKTREE}/.ai-factory/evolutions"
+
 # Project context
 cp .ai-factory/DESCRIPTION.md "${WORKTREE}/.ai-factory/DESCRIPTION.md" 2>/dev/null
 cp .ai-factory/ARCHITECTURE.md "${WORKTREE}/.ai-factory/ARCHITECTURE.md" 2>/dev/null
 cp .ai-factory/RESEARCH.md "${WORKTREE}/.ai-factory/RESEARCH.md" 2>/dev/null
 
-# Past lessons / patches
-cp -r .ai-factory/patches/ "${WORKTREE}/.ai-factory/patches/" 2>/dev/null
+# Skill-context (primary learning context)
+cp -r .ai-factory/skill-context/ "${WORKTREE}/.ai-factory/skill-context/" 2>/dev/null
+
+# Note: do not copy patch-cursor.json into a truncated patch set.
+# The parallel worktree copies only a limited number of patches for fallback context.
+# Copying the evolve cursor without the full patch history can cause /aif-evolve to skip patches
+# or trigger a partial rescan.
+
+# Limited patch fallback: copy only recent patches (latest 10 by filename)
+for patch in $(ls -1 .ai-factory/patches/*.md 2>/dev/null | sort | tail -n 10); do
+  cp "${patch}" "${WORKTREE}/.ai-factory/patches/"
+done
 
 # Agent skills + settings
 cp -r .claude/ "${WORKTREE}/.claude/" 2>/dev/null
@@ -247,7 +263,6 @@ fi
 Create changes directory and switch:
 
 ```bash
-mkdir -p "${WORKTREE}/.ai-factory/plans"
 cd "${WORKTREE}"
 ```
 

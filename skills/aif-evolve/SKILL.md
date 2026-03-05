@@ -20,6 +20,18 @@ analyze recurring problems, tech-specific pitfalls, project conventions
 enhance skills with project-specific rules, guards, and patterns
 ```
 
+## Patch Consumption Policy
+
+Use a two-layer learning model:
+
+1. **Raw patches** (`.ai-factory/patches/*.md`) are the source material.
+2. **Skill-context rules** (`.ai-factory/skill-context/*`) are the compact, reusable output.
+
+Policy across workflow skills:
+- `/aif-evolve` is the primary raw-patch analyzer. It processes patches **incrementally** using a cursor.
+- `/aif-implement`, `/aif-fix`, and `/aif-improve` should prefer skill-context first; raw patches are fallback context only.
+- Force full re-analysis only when needed (e.g., reset cursor and rerun evolve).
+
 ## Critical: Never Edit Built-in Skills Directly
 
 **NEVER modify any files inside built-in `aif-*` skill directories** (`skills/aif-*/`).
@@ -97,11 +109,48 @@ If any rule is violated — fix the output before presenting it to the user.
 
 ### Step 1: Collect Intelligence
 
-**1.1: Read all patches**
+**1.1: Read patches incrementally (cursor-based)**
 
 ```
 Glob: .ai-factory/patches/*.md
 ```
+
+Cursor file:
+
+```
+.ai-factory/evolutions/patch-cursor.json
+```
+
+Recommended shape:
+
+```json
+{
+  "last_processed_patch": "YYYY-MM-DD-HH.mm.md",
+  "updated_at": "YYYY-MM-DD HH:mm"
+}
+```
+
+Processing rules:
+
+1. Glob patch files and sort by filename ascending (timestamp format is lexical-friendly).
+2. If no cursor file exists → first run: read all patches.
+3. If cursor file exists and referenced patch is present → read only patches with filename `>` `last_processed_patch`.
+4. If cursor file exists but referenced patch is missing (deleted/renamed) → emit `WARN [evolve]` and do a full rescan.
+5. Historical edits/deletes for patches older than cursor are not reliably detectable without a saved baseline (snapshot/hash manifest). Do NOT emit this warning by default.
+6. Emit `WARN [evolve]` for historical drift only when a reliable baseline exists and drift is actually detected.
+7. Full rescan procedure: delete `.ai-factory/evolutions/patch-cursor.json`, then run `/aif-evolve` again.
+8. **Do not advance cursor in Step 1.1.** Cursor is updated only after successful apply/log write in Step 7.3.
+
+**Overlap window (anti-miss guard):**
+
+LLMs may miss prevention points on a single pass. To reduce the chance of "permanently skipping" a patch when running incrementally:
+
+9. When running in incremental mode (cursor exists and referenced patch is present), ALSO read the newest 5 patches by filename (tail-5 of the sorted patch list), then de-duplicate by filename.
+10. Track these separately in your own notes:
+   - "New patches" = patches with filename `>` `last_processed_patch`
+   - "Overlap patches" = tail-5 patches
+   - "Processed patches" = union(New, Overlap)
+11. Cursor updates in Step 7.3 MUST be based on "New patches" only (never advance cursor when only overlap patches were processed).
 
 Read every patch. For each one, extract:
 - **Problem categories** (null-check, async, validation, types, API, DB, etc.)
@@ -112,7 +161,7 @@ Read every patch. For each one, extract:
 - **Tags**
 
 **Build a Prevention Point Registry** — a flat list of ALL extracted prevention points across
-all patches. This registry is the primary input for Step 5 gap analysis.
+the processed patch set in this run. This registry is the primary input for Step 5 gap analysis.
 
 ```
 | # | Patch | Prevention Point (specific action) | Target Skill(s) |
@@ -125,6 +174,8 @@ all patches. This registry is the primary input for Step 5 gap analysis.
 **CRITICAL:** A patch with 5 prevention points produces 5 rows, not 1.
 If a prevention point targets 2 skills, it appears once but with both skills listed —
 and EACH skill must be checked independently in Step 5.
+
+When the run is incremental, this registry reflects the processed patch set for this run (new + overlap). Use full rescan when you need full historical backfill.
 
 **1.2: Aggregate patterns**
 
@@ -291,6 +342,8 @@ of the existing rule against each prevention point individually.
 **Verification:** After completing the registry scan, count: total prevention points,
 covered, uncovered. If uncovered > 0 — these are gaps for Step 6.
 
+Note: in incremental mode, counts represent this run's processed patch set. For full historical recount, run a full rescan.
+
 **5.2: Tech-stack gaps**
 
 Compare project tech stack against skill instructions:
@@ -376,7 +429,10 @@ Based on:
 
 **After presenting the full report, use `AskUserQuestion` to collect decisions:**
 
-For improvements — ask: Yes apply all / Let me pick / No just save report
+For improvements — ask:
+- Yes, apply all improvements
+- Let me pick
+- No, just save report (no changes applied)
 
 **If user chooses "Let me pick":** present improvements in batches of up to 4
 per `AskUserQuestion` call (same approach as Step 4 stale rules). For each
@@ -440,6 +496,27 @@ Create `.ai-factory/evolutions/YYYY-MM-DD-HH.mm.md`:
 mkdir -p .ai-factory/evolutions
 ```
 
+After saving the evolution log, update cursor state:
+
+Definitions:
+- "New patches processed" = patches with filename `>` `last_processed_patch`.
+  - If no cursor exists (first run): "New patches" is the full patch list.
+  - Overlap patches do NOT count as "New patches".
+- "Improvements applied" = at least one approved improvement was written to disk
+  (skill-context updated and/or custom skill SKILL.md edited).
+
+Cursor update rules:
+
+1. If no new patches were processed, keep cursor unchanged.
+2. If new patches were processed:
+   - If improvements were applied: advance the cursor to the newest "New patch" filename.
+   - If no improvements were applied (e.g., user chose "No, just save report" or skipped all):
+     - Do NOT advance cursor by default.
+     - Ask the user whether to advance cursor anyway.
+       - Recommended: keep cursor unchanged to allow reruns (LLMs may miss prevention points).
+       - If the user explicitly chooses to advance anyway, write the cursor as usual.
+3. If execution fails before changes are finalized, do not advance cursor.
+
 ```markdown
 # Evolution: YYYY-MM-DD HH:mm
 
@@ -481,7 +558,7 @@ Improvements applied: Y
 
 ### Context Cleanup
 
-After completing evolution, suggest `/clear` or `/compact` — context is heavy after reading all patches and skills.
+After completing evolution, suggest `/clear` or `/compact` — context is heavy after patch analysis and skill processing.
 
 ## Rules
 
@@ -499,7 +576,7 @@ After completing evolution, suggest `/clear` or `/compact` — context is heavy 
     Merges in Step 7 (combining narrow rules into a broader one) are allowed as long
     as all prevention points are preserved in the merged rule.
 12. **Installed only** — do not evolve skills not installed in the project
-13. **Ownership boundary** — this command owns `.ai-factory/evolutions/*.md` and `.ai-factory/skill-context/*`; treat roadmap/rules/research/plan artifacts as read-only context unless explicitly asked
+13. **Ownership boundary** — this command owns `.ai-factory/evolutions/*.md`, `.ai-factory/evolutions/patch-cursor.json`, and `.ai-factory/skill-context/*`; treat roadmap/rules/research/plan artifacts as read-only context unless explicitly asked
 
 ## Example
 

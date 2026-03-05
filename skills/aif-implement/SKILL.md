@@ -131,18 +131,6 @@ Based on choice:
 - **ALWAYS follow these rules** when implementing — they override general patterns
 - Rules are short, actionable — treat each as a hard requirement
 
-**Read all patches from `.ai-factory/patches/`** if the directory exists:
-- Use `Glob` to find all `*.md` files in `.ai-factory/patches/`
-- Read each patch to learn from past fixes and mistakes
-- Apply lessons learned: avoid patterns that caused bugs, use patterns that prevented them
-- Pay attention to **Root Cause** and **Prevention** sections — they tell you what NOT to do
-
-**Use this context when implementing:**
-- Follow the specified tech stack
-- Use correct import patterns and conventions
-- Apply proper error handling and logging as specified
-- **Avoid pitfalls documented in patches** — don't repeat past mistakes
-
 **Read `.ai-factory/skill-context/aif-implement/SKILL.md`** — MANDATORY if the file exists.
 
 This file contains project-specific rules accumulated by `/aif-evolve` from patches,
@@ -162,6 +150,22 @@ codebase conventions, and tech-stack analysis. These rules are tailored to the c
 
 **Enforcement:** After generating any output artifact, verify it against all skill-context rules.
 If any rule is violated — fix the output before presenting it to the user.
+
+**Patch fallback (limited, only when skill-context is missing):**
+
+- If `.ai-factory/skill-context/aif-implement/SKILL.md` does not exist and `.ai-factory/patches/` exists:
+  - Use `Glob` to find `*.md` files in `.ai-factory/patches/`
+  - Sort patch filenames ascending (lexical), then select the last **10** (or fewer if less exist)
+  - Read those selected patch files only
+  - Prioritize **Root Cause** and **Prevention** sections
+- If skill-context exists, do **not** read all patches by default.
+  - Optionally read a few targeted recent patches only when a task clearly matches a known failure pattern.
+
+**Use this context when implementing:**
+- Follow the specified tech stack
+- Use correct import patterns and conventions
+- Apply proper error handling and logging as specified
+- Avoid pitfalls documented in skill-context rules and relevant fallback patches
 
 ### Step 0.1: Find Plan File
 
