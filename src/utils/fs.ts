@@ -109,18 +109,6 @@ export async function listFilesRecursive(dirPath: string): Promise<string[]> {
   return files;
 }
 
-export function hashBuffer(content: Buffer | string): string {
-  return createHash('sha256').update(content).digest('hex');
-}
-
-export async function hashFile(filePath: string): Promise<string | null> {
-  const content = await readFileBuffer(filePath);
-  if (!content) {
-    return null;
-  }
-  return hashBuffer(content);
-}
-
 export async function hashDirectory(dirPath: string): Promise<string | null> {
   const files = await listFilesRecursive(dirPath);
   if (files.length === 0) {
