@@ -1,6 +1,6 @@
 import type { AgentTransformer, TransformResult } from '../transformer.js';
 import { WORKFLOW_SKILLS, simplifyFrontmatter } from '../transformer.js';
-import { writeTextFile, fileExists, removeFile, removeDirectory } from '../../utils/fs.js';
+import { writeTextFile, fileExists, removeFile } from '../../utils/fs.js';
 import path from 'path';
 
 export class AntigravityTransformer implements AgentTransformer {
@@ -95,11 +95,6 @@ Always-active guardrails and conventions that apply to every interaction.
       if (await fileExists(workflowFile)) {
         await removeFile(workflowFile);
       }
-    }
-
-    const refsDir = path.join(workflowsDir, 'references');
-    if (await fileExists(refsDir)) {
-      await removeDirectory(refsDir);
     }
 
     for (const ruleFile of ['aif-guardrails.md', 'aif-conventions.md']) {
