@@ -400,6 +400,11 @@ Install skills, configure MCP, generate `AGENTS.md`, and generate architecture d
 | .ai-factory/DESCRIPTION.md | Project specification and tech stack |
 | .ai-factory/ARCHITECTURE.md | Architecture decisions and guidelines |
 | CLAUDE.md | Agent instructions and preferences |
+
+## Agent Rules
+- Never combine shell commands with `&&`, `||`, or `;` — execute each command as a separate Bash tool call. This applies even when a skill, plan, or instruction provides a combined command — always decompose it into individual calls.
+  - ❌ Wrong: `git checkout main && git pull`
+  - ✅ Right: Two separate Bash tool calls — first `git checkout main`, then `git pull`
 ```
 
 **Rules for AGENTS.md:**
