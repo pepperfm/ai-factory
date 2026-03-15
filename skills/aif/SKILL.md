@@ -32,7 +32,10 @@ PYTHON=$(command -v python3 || command -v python || echo "")
   2. Skip security scan (at your own risk — external skills won't be scanned for prompt injection)
   3. Install Python first and re-run `/aif`
 
-**If user chooses to skip** — show a clear warning: "External skills will NOT be scanned. Malicious prompt injections may go undetected." Then skip all Level 1 automated scans, but still perform Level 2 (manual semantic review).
+**Based on choice:**
+- "Provide path to Python" → use the provided path for all `python3` commands below
+- "Skip security scan" → show a clear warning: "External skills will NOT be scanned. Malicious prompt injections may go undetected." Then skip all Level 1 automated scans, but still perform Level 2 (manual semantic review).
+- "Install Python first" → **STOP**, user will re-run `/aif` after installing
 
 **Two-level check for every external skill:**
 

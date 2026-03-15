@@ -97,11 +97,9 @@ Options:
 1. **Fix now** — Investigate and apply the fix immediately
 2. **Plan first** — Create a fix plan for review, then fix later
 
-**If user chooses "Plan first":**
-- Proceed to **Step 1.1: Create Fix Plan**
-
-**If user chooses "Fix now":**
-- Skip Step 1.1, proceed directly to **Step 2: Investigate the Codebase**
+**Based on choice:**
+- "Plan first" → Proceed to **Step 1.1: Create Fix Plan**
+- "Fix now" → Skip Step 1.1, proceed directly to **Step 2: Investigate the Codebase**
 
 ### Step 1.1: Create Fix Plan
 

@@ -112,7 +112,7 @@ Options:
 4. Nothing, just checking status
 ```
 
-Based on choice:
+**Based on choice:**
 - New feature from current → `/aif-plan full <description>`
 - Return to main → `git checkout main`, then `git pull` → `/aif-plan full <description>`
 - Quick task → `/aif-plan fast <description>`
@@ -504,7 +504,17 @@ Options:
 2. No, I'll handle it manually
 ```
 
-If user chooses **"Yes, merge and clean up"**:
+**Based on choice:**
+- "Yes, merge and clean up" → follow the Worktree Merge procedure below
+- "No, I'll handle it manually" → show a reminder:
+  ```
+  To merge and clean up later:
+    cd <main-repo-path>
+    git merge <branch>
+    /aif-plan --cleanup <branch>
+  ```
+
+#### Worktree Merge
 
 1. **Ensure everything is committed** — check `git status`. If uncommitted changes exist, suggest `/aif-commit` first and wait.
 
@@ -552,14 +562,6 @@ If user chooses **"Yes, merge and clean up"**:
    ```
 
 → **STOP** — worktree merged and removed, no further steps needed.
-
-If user chooses **"No, I'll handle it manually"**, show a reminder:
-```
-To merge and clean up later:
-  cd <main-repo-path>
-  git merge <branch>
-  /aif-plan --cleanup <branch>
-```
 
 ### Final Step — Verify or Commit
 

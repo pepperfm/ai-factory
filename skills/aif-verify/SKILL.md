@@ -43,7 +43,7 @@ Same logic as `/aif-implement`:
    → Look for .ai-factory/plans/<branch-name>.md
 ```
 
-If no plan file found:
+**If no plan file found:**
 ```
 AskUserQuestion: No plan file found. What should I verify?
 
