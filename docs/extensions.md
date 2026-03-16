@@ -62,6 +62,7 @@ An extension is a directory (or npm package, or git repo) with `extension.json` 
 ```
 my-extension/
 ├── extension.json          # Manifest (required)
+├── package.json            # Required for npm packages
 ├── commands/               # Custom CLI commands
 │   └── hello.js
 ├── injections/             # Content to inject into existing skills
@@ -74,6 +75,19 @@ my-extension/
 └── mcp/                    # MCP server templates
     └── my-server.json
 ```
+
+> **Note:** If you plan to publish your extension as an **npm package**, you must include a `package.json` alongside `extension.json`. The `npm pack` command used during installation requires it. A minimal `package.json` is sufficient:
+>
+> ```json
+> {
+>   "name": "aif-ext-example",
+>   "version": "1.0.0",
+>   "description": "Example extension",
+>   "type": "module"
+> }
+> ```
+>
+> For local directory and git sources, only `extension.json` is required.
 
 ### Manifest: `extension.json`
 
