@@ -2,7 +2,7 @@
 name: aif-evolve
 description: Self-improve AI Factory skills based on project context, accumulated patches, and codebase patterns. Analyzes what went wrong, what works, and enhances skills to prevent future issues. Use when you want to make AI smarter for your project.
 argument-hint: '[skill-name or "all"]'
-allowed-tools: Read Write Edit Glob Grep Bash(git *) Questions
+allowed-tools: Read Write Edit Glob Grep Bash(git *) AskUserQuestion Questions
 disable-model-invocation: true
 ---
 
@@ -434,10 +434,13 @@ For improvements — ask:
 - Let me pick
 - No, just save report (no changes applied)
 
-**If user chooses "Let me pick":** present improvements in batches of up to 4
-per `AskUserQuestion` call (same approach as Step 4 stale rules). For each
-improvement, options: Apply / Skip. Continue until all improvements are resolved.
-Then proceed to 7.2 with only approved improvements.
+**Based on choice:**
+- "Yes, apply all improvements" → proceed to 7.2 with all improvements
+- "Let me pick" → present improvements in batches of up to 4
+  per `AskUserQuestion` call (same approach as Step 4 stale rules). For each
+  improvement, options: Apply / Skip. Continue until all improvements are resolved.
+  Then proceed to 7.2 with only approved improvements.
+- "No, just save report" → no changes applied, **STOP**
 
 **Do NOT apply any changes until the user answers.**
 

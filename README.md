@@ -89,7 +89,7 @@ ai-factory upgrade
 
 `ai-factory upgrade` removes old bare-named skills (`commit`, `feature`, etc.) and installs new `aif-*` prefixed versions. Custom skills are preserved.
 
-> **Note:** `ai-factory update` automatically checks npm for a newer CLI version and offers to install it before updating skills. You no longer need to run `npm install -g ai-factory@latest` manually.
+> **Note:** `ai-factory update` automatically checks npm for a newer CLI version and offers to install it before updating skills, then reports `changed/unchanged/skipped/removed` for installed base skills. Use `ai-factory update --force` for a clean reinstall of currently installed base skills.
 
 ### Example Workflow
 
@@ -158,6 +158,7 @@ AI Factory can generate and maintain your project docs with a single command:
 ## Links
 
 - [Official Website](https://aif.cutcode.dev) - AI Factory website
+- If AI Factory feels too simple for your goals, try [HLV](https://github.com/lee-to/hlv)
 - [skills.sh](https://skills.sh) - Skill marketplace
 - [Agent Skills Spec](https://agentskills.io) - Skill specification
 - [Claude Code](https://claude.ai/code) - Anthropic's AI coding agent

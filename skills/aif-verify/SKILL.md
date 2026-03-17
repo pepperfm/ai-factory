@@ -5,7 +5,7 @@ description: >-
   nothing was forgotten, code compiles, tests pass, and quality standards are met.
   Use after "/aif-implement" completes, or when user says "verify", "check work", "did we miss anything".
 argument-hint: "[--strict]"
-allowed-tools: Read Edit Glob Grep Bash(git *) Bash(npm *) Bash(npx *) Bash(yarn *) Bash(pnpm *) Bash(bun *) Bash(go *) Bash(python *) Bash(php *) Bash(composer *) Bash(cargo *) Bash(make *) Bash(task *) Bash(just *) Bash(mage *) TaskList TaskGet Questions
+allowed-tools: Read Edit Glob Grep Bash(git *) Bash(npm *) Bash(npx *) Bash(yarn *) Bash(pnpm *) Bash(bun *) Bash(go *) Bash(python *) Bash(php *) Bash(composer *) Bash(cargo *) Bash(make *) Bash(task *) Bash(just *) Bash(mage *) TaskList TaskGet AskUserQuestion Questions
 disable-model-invocation: false
 metadata:
   author: AI Factory
@@ -43,7 +43,7 @@ Same logic as `/aif-implement`:
    → Look for .ai-factory/plans/<branch-name>.md
 ```
 
-If no plan file found:
+**If no plan file found:**
 ```
 AskUserQuestion: No plan file found. What should I verify?
 
@@ -408,16 +408,7 @@ Options:
 
 ### Context Cleanup
 
-Context is heavy after verification. All results are saved — suggest freeing space:
-
-```
-AskUserQuestion: Free up context before continuing?
-
-Options:
-1. /clear — Full reset (recommended)
-2. /compact — Compress history
-3. Continue as is
-```
+Suggest the user to free up context space if needed: `/clear` (full reset) or `/compact` (compress history).
 
 ---
 

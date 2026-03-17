@@ -2,7 +2,7 @@
 name: aif
 description: Set up agent context for a project. Analyzes tech stack, installs relevant skills from skills.sh, generates custom skills, and configures MCP servers. Use when starting new project, setting up AI context, or asking "set up project", "configure AI", "what skills do I need".
 argument-hint: "[project description]"
-allowed-tools: Read Glob Grep Write Bash(mkdir *) Bash(npx skills *) Bash(python *security-scan*) Bash(rm -rf *) Skill WebFetch Questions
+allowed-tools: Read Glob Grep Write Bash(mkdir *) Bash(npx skills *) Bash(python *security-scan*) Bash(rm -rf *) Skill WebFetch AskUserQuestion Questions
 ---
 
 # AI Factory - Project Setup
@@ -32,7 +32,10 @@ PYTHON=$(command -v python3 || command -v python || echo "")
   2. Skip security scan (at your own risk — external skills won't be scanned for prompt injection)
   3. Install Python first and re-run `/aif`
 
-**If user chooses to skip** — show a clear warning: "External skills will NOT be scanned. Malicious prompt injections may go undetected." Then skip all Level 1 automated scans, but still perform Level 2 (manual semantic review).
+**Based on choice:**
+- "Provide path to Python" → use the provided path for all `python3` commands below
+- "Skip security scan" → show a clear warning: "External skills will NOT be scanned. Malicious prompt injections may go undetected." Then skip all Level 1 automated scans, but still perform Level 2 (manual semantic review).
+- "Install Python first" → **STOP**, user will re-run `/aif` after installing
 
 **Two-level check for every external skill:**
 
@@ -400,6 +403,11 @@ Install skills, configure MCP, generate `AGENTS.md`, and generate architecture d
 | .ai-factory/DESCRIPTION.md | Project specification and tech stack |
 | .ai-factory/ARCHITECTURE.md | Architecture decisions and guidelines |
 | CLAUDE.md | Agent instructions and preferences |
+
+## Agent Rules
+- Never combine shell commands with `&&`, `||`, or `;` — execute each command as a separate Bash tool call. This applies even when a skill, plan, or instruction provides a combined command — always decompose it into individual calls.
+  - ❌ Wrong: `git checkout main && git pull`
+  - ✅ Right: Two separate Bash tool calls — first `git checkout main`, then `git pull`
 ```
 
 **Rules for AGENTS.md:**

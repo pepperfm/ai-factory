@@ -2,7 +2,7 @@
 name: aif-fix
 description: Fix a specific bug or problem in the codebase. Supports two modes - immediate fix or plan-first. Without arguments executes existing FIX_PLAN.md. Always suggests test coverage and adds logging. Use when user says "fix bug", "debug this", "something is broken", or pastes an error message.
 argument-hint: <bug description or error message>
-allowed-tools: Read Write Edit Glob Grep Bash Questions Task
+allowed-tools: Read Write Edit Glob Grep Bash AskUserQuestion Questions Task
 disable-model-invocation: false
 ---
 
@@ -97,11 +97,9 @@ Options:
 1. **Fix now** — Investigate and apply the fix immediately
 2. **Plan first** — Create a fix plan for review, then fix later
 
-**If user chooses "Plan first":**
-- Proceed to **Step 1.1: Create Fix Plan**
-
-**If user chooses "Fix now":**
-- Skip Step 1.1, proceed directly to **Step 2: Investigate the Codebase**
+**Based on choice:**
+- "Plan first" → Proceed to **Step 1.1: Create Fix Plan**
+- "Fix now" → Skip Step 1.1, proceed directly to **Step 2: Investigate the Codebase**
 
 ### Step 1.1: Create Fix Plan
 
@@ -273,10 +271,23 @@ describe('functionName', () => {
 });
 \`\`\`
 
-Would you like me to create this test?
-- [ ] Yes, create the test
-- [ ] No, skip for now
+AskUserQuestion: Would you like me to create this test?
+
+Options:
+1. Yes, create the test
+2. No, skip for now
 ```
+
+**Handling the user's response:**
+
+- **If "Yes, create the test":**
+  1. Create the test file in the appropriate test directory (follow project conventions)
+  2. Include the suggested test case and any additional edge cases related to the fix
+  3. Run the test to verify it passes
+  4. Then proceed to **Step 6: Create Self-Improvement Patch**
+
+- **If "No, skip for now":**
+  - Proceed directly to **Step 6: Create Self-Improvement Patch**
 
 ## Logging Requirements
 
@@ -353,6 +364,8 @@ function fixedFunction(input) {
 
 ## After Fixing
 
+**Use this output template in Step 5** (before the AskUserQuestion about tests):
+
 ```
 ## Fix Applied ✅
 
@@ -364,13 +377,6 @@ function fixedFunction(input) {
 - path/to/file.ts (line X)
 
 **Logging added:** Yes, prefix `[FIX]`
-**Test suggested:** Yes
-
-Please test the fix and share logs if any issues.
-
-To add the suggested test:
-- [ ] Yes, create test
-- [ ] No, skip
 ```
 
 ### Step 6: Create Self-Improvement Patch
@@ -470,16 +476,7 @@ default avatar URL. Also added a null check in the Avatar sub-component.
 
 ### Context Cleanup
 
-Context is heavy after investigation, fix, and patch generation. All results are saved — suggest freeing space:
-
-```
-AskUserQuestion: Free up context before continuing?
-
-Options:
-1. /clear — Full reset (recommended)
-2. /compact — Compress history
-3. Continue as is
-```
+Suggest the user to free up context space if needed: `/clear` (full reset) or `/compact` (compress history).
 
 ---
 

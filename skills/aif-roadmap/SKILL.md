@@ -2,7 +2,7 @@
 name: aif-roadmap
 description: Create or update a project roadmap with major milestones. Generates .ai-factory/ROADMAP.md — a strategic checklist of high-level goals. Use when user says "roadmap", "project plan", "milestones", or "what to build next".
 argument-hint: "[check | project vision or requirements]"
-allowed-tools: Read Write Edit Glob Grep Bash(git *) Questions
+allowed-tools: Read Write Edit Glob Grep Bash(git *) AskUserQuestion Questions
 disable-model-invocation: true
 ---
 
@@ -72,7 +72,9 @@ Options:
 3. Both — I'll describe, you'll add what's missing
 ```
 
-If user chooses to describe → ask follow-up:
+**Based on choice:**
+- "Analyze codebase and suggest milestones" → proceed to Step 1.2
+- "Let me describe the vision" or "Both" → collect user description (if "Both", also add codebase analysis in Step 1.2), then ask follow-up:
 
 ```
 AskUserQuestion: Any priorities or deadlines?
