@@ -434,10 +434,13 @@ For improvements — ask:
 - Let me pick
 - No, just save report (no changes applied)
 
-**If user chooses "Let me pick":** present improvements in batches of up to 4
-per `AskUserQuestion` call (same approach as Step 4 stale rules). For each
-improvement, options: Apply / Skip. Continue until all improvements are resolved.
-Then proceed to 7.2 with only approved improvements.
+**Based on choice:**
+- "Yes, apply all improvements" → proceed to 7.2 with all improvements
+- "Let me pick" → present improvements in batches of up to 4
+  per `AskUserQuestion` call (same approach as Step 4 stale rules). For each
+  improvement, options: Apply / Skip. Continue until all improvements are resolved.
+  Then proceed to 7.2 with only approved improvements.
+- "No, just save report" → no changes applied, **STOP**
 
 **Do NOT apply any changes until the user answers.**
 

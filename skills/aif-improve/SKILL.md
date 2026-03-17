@@ -264,11 +264,18 @@ Tasks analyzed: N
 - Dependencies to fix: N
 - Tasks to remove: N
 
-Apply these improvements?
-- [ ] Yes, apply all
-- [ ] Let me pick which ones
-- [ ] No, keep the plan as is
+AskUserQuestion: Apply these improvements?
+
+Options:
+1. Yes, apply all
+2. Let me pick which ones
+3. No, keep the plan as is
 ```
+
+**Based on choice:**
+- Yes, apply all → apply all improvements to the plan file
+- Let me pick which ones → present each improvement individually for approval
+- No, keep the plan as is → exit without modifications
 
 **If no improvements found:**
 
@@ -349,16 +356,7 @@ Ready to implement:
 
 ### Context Cleanup
 
-Context is heavy after deep codebase analysis. Plan is updated in file — suggest freeing space:
-
-```
-AskUserQuestion: Free up context before continuing?
-
-Options:
-1. /clear — Full reset (recommended)
-2. /compact — Compress history
-3. Continue as is
-```
+Suggest the user to free up context space if needed: `/clear` (full reset) or `/compact` (compress history).
 
 ## Important Rules
 

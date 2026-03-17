@@ -72,7 +72,9 @@ Options:
 3. Both — I'll describe, you'll add what's missing
 ```
 
-If user chooses to describe → ask follow-up:
+**Based on choice:**
+- "Analyze codebase and suggest milestones" → proceed to Step 1.2
+- "Let me describe the vision" or "Both" → collect user description (if "Both", also add codebase analysis in Step 1.2), then ask follow-up:
 
 ```
 AskUserQuestion: Any priorities or deadlines?
