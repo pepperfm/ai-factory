@@ -1,8 +1,9 @@
 ---
 name: security-sidecar
 description: Read-only background security audit sidecar for the current implementation scope. Use from a top-level implementer agent after code changes when a concise security check is needed.
-tools: Read, Glob, Grep, Bash
-model: sonnet
+tools: Read, Glob, Grep
+model: inherit
+disallowedTools: Write, Edit
 permissionMode: dontAsk
 background: true
 maxTurns: 6

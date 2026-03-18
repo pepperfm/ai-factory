@@ -1,8 +1,9 @@
 ---
 name: commit-preparer
 description: Read-only background commit preparation sidecar for the current implementation scope. Use from a top-level implementer agent when deciding whether a final /aif-commit step can be streamlined.
-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep
 model: sonnet
+disallowedTools: Write, Edit
 permissionMode: dontAsk
 background: true
 maxTurns: 6

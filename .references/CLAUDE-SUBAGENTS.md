@@ -371,23 +371,24 @@ Existing project agents in `.claude/agents/`:
 
 | Agent | Role | Model | Tools |
 |---|---|---|---|
-| `implementer` | run `/aif-implement`, loop `/aif-verify`, and apply quality sidecars | `sonnet` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
-| `implementer-isolation` | isolated worktree variant of the implementation loop | `sonnet` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
-| `best-practices-sidecar` | background read-only best-practices worker | `sonnet` | `Read, Glob, Grep, Bash` |
+| `implement-coordinator` | parallel execution coordinator — parses plan dependency graph, dispatches independent tasks concurrently via `implementer-isolation`, merges results. Run as `claude --agent implement-coordinator` | `inherit` | `Agent(implementer, implementer-isolation), Read, Write, Edit, Glob, Grep, Bash` |
+| `implementer` | run `/aif-implement`, loop `/aif-verify`, and apply quality sidecars | `inherit` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
+| `implementer-isolation` | isolated worktree variant of the implementation loop | `inherit` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
+| `best-practices-sidecar` | background read-only best-practices worker | `inherit` | `Read, Glob, Grep, Bash` |
 | `commit-preparer` | background read-only commit preparation worker | `sonnet` | `Read, Glob, Grep, Bash` |
 | `docs-auditor` | background read-only docs drift worker | `sonnet` | `Read, Glob, Grep, Bash` |
 | `loop-orchestrator` | routes next loop role | `sonnet` | `Read, Glob, Grep` |
 | `loop-planner` | short iteration plan | `haiku` | `Read, Glob, Grep` |
-| `loop-producer` | produce artifact | `sonnet` | `Read, Write, Edit` |
-| `loop-evaluator` | strict verdict JSON | `sonnet` | `Read, Glob, Grep` |
+| `loop-producer` | produce artifact | `inherit` | `Read, Write, Edit` |
+| `loop-evaluator` | strict verdict JSON | `inherit` | `Read, Glob, Grep` |
 | `loop-critic` | turn failures into fixes | `sonnet` | `Read` |
-| `loop-refiner` | minimal artifact edits | `sonnet` | `Read, Write, Edit` |
+| `loop-refiner` | minimal artifact edits | `inherit` | `Read, Write, Edit` |
 | `loop-test-prep` | lightweight test prep | `haiku` | `Read, Glob, Grep` |
 | `loop-perf-prep` | performance prep | `haiku` | `Read, Glob, Grep` |
 | `loop-invariant-prep` | invariants/consistency prep | `haiku` | `Read, Glob, Grep` |
-| `plan-polisher` | run `/aif-plan`, critique the result, and loop `/aif-improve` until stable | `sonnet` | `Read, Write, Edit, Glob, Grep, Bash` |
-| `review-sidecar` | background read-only review worker | `sonnet` | `Read, Glob, Grep, Bash` |
-| `security-sidecar` | background read-only security worker | `sonnet` | `Read, Glob, Grep, Bash` |
+| `plan-polisher` | run `/aif-plan`, critique the result, and loop `/aif-improve` until stable | `inherit` | `Read, Write, Edit, Glob, Grep, Bash` |
+| `review-sidecar` | background read-only review worker | `inherit` | `Read, Glob, Grep, Bash` |
+| `security-sidecar` | background read-only security worker | `inherit` | `Read, Glob, Grep, Bash` |
 
 Patterns already worth preserving here:
 - role-specific agents

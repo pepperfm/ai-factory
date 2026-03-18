@@ -1,8 +1,9 @@
 ---
 name: loop-refiner
 description: Apply critique issues to produce a minimally changed improved artifact. Use proactively within /aif-loop when refinement is needed after failed evaluation.
-tools: Read, Write, Edit
-model: sonnet
+tools: Read, Write, Edit, Glob, Grep
+model: inherit
+permissionMode: acceptEdits
 maxTurns: 6
 ---
 
