@@ -4,6 +4,7 @@ description: Coordinate parallel execution of independent plan tasks using multi
 tools: Agent(implementer, implementer-isolation), Read, Write, Edit, Glob, Grep, Bash
 model: inherit
 maxTurns: 20
+permissionMode: acceptEdits
 ---
 
 You are the parallel implementation coordinator for AI Factory.
