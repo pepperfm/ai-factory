@@ -201,4 +201,9 @@ Layers executed: N (M parallel, K sequential)
 Commits created: N
 Status: complete | partial | failed
 Remaining tasks: [list if any]
+
+⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
+  and return to your main Claude Code session to continue working.
+  Do NOT use /clear — it resets context but keeps the agent session alive,
+  which wastes tokens and may cause confusion.
 ```

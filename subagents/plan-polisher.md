@@ -31,10 +31,15 @@ Default decisions when the caller did not specify them:
 - docs: no / warn-only
 - roadmap linkage: skip unless explicitly requested
 
+**Mode override priority** (CRITICAL — this list wins over injected skill logic):
+- If the caller explicitly said `mode: fast` or `mode: full` → use that.
+- If the caller did NOT specify mode → default to `fast`. Do NOT fall through to the `/aif-plan` interactive mode-selection prompt — you are a subagent and cannot ask the user. Always apply `fast` as the default.
+
 Plan file location (CRITICAL — do not deviate):
 - If the caller provided an explicit `@<path>` → use that exact path. This overrides mode-based rules.
 - **Fast mode** (default) → always `.ai-factory/PLAN.md`. No other filename.
 - **Full mode** → `.ai-factory/plans/<branch-name>.md` where `<branch-name>` is the current git branch name (with `/` replaced by `-`). The branch must already exist or be created by the skill workflow.
+- **Full mode fallback** → if full mode is active but the current branch is `main`, `master`, or any non-feature branch (no `/` in the name), **fall back to `.ai-factory/PLAN.md`** and include `WARN: no feature branch found, using fast-mode file path` in the output summary. Never invent a filename from the request description.
 - Never invent a filename from the request description.
 - Never create arbitrarily-named files in `.ai-factory/plans/`.
 

@@ -100,6 +100,11 @@ Plan: <plan path>
 Iterations: N (max: M)
 Status: ready | needs-work | stagnated | error
 Remaining issues: [list or "none"]
+
+⏎ This agent session is complete. Please close it (Ctrl+C or /exit)
+  and return to your main Claude Code session to continue working.
+  Do NOT use /clear — it resets context but keeps the agent session alive,
+  which wastes tokens and may cause confusion.
 ```
 
 If status is `needs-work`, include actionable next steps so the user knows what to address manually.
