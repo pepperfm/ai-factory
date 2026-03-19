@@ -6,16 +6,24 @@ import { saveConfig, configExists, loadConfig, getCurrentVersion, type AgentInst
 import { configureMcp, getMcpInstructions } from '../../core/mcp.js';
 import { getAgentConfig } from '../../core/agents.js';
 import { cleanupAgentSetup, getAgentOnboarding } from '../../core/transformer.js';
-import { removeDirectory } from '../../utils/fs.js';
+import { removeDirectory, removeFile } from '../../utils/fs.js';
 import { applyExtensionInjections } from '../../core/injections.js';
 import { collectReplacedSkills } from '../../core/extension-ops.js';
 
 async function removeAgentSetup(projectDir: string, agent: AgentInstallation): Promise<void> {
   const agentConfig = getAgentConfig(agent.id);
   await removeDirectory(path.join(projectDir, agent.skillsDir));
-  if (agent.subagentsDir ?? agentConfig.subagentsDir) {
-    await removeDirectory(path.join(projectDir, agent.subagentsDir ?? agentConfig.subagentsDir!));
+
+  // Remove only AI Factory-managed subagents, not the entire directory.
+  // The directory may contain user-created custom agents unrelated to AI Factory.
+  const subagentsDir = agent.subagentsDir ?? agentConfig.subagentsDir;
+  if (subagentsDir) {
+    const managedFiles = agent.installedSubagents ?? [];
+    for (const relPath of managedFiles) {
+      await removeFile(path.join(projectDir, subagentsDir, relPath));
+    }
   }
+
   await cleanupAgentSetup(agent.id, projectDir, agent.skillsDir);
 }
 

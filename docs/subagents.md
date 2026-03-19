@@ -4,6 +4,12 @@
 
 > **Claude Code only.** AI Factory ships bundled Claude subagents from the package `subagents/` directory and installs them into `.claude/agents/` during `ai-factory init` whenever Claude Code is selected. `ai-factory update` refreshes those managed files and preserves this behavior as Claude-only rather than pretending it is portable across other agents.
 
+## Migration Note
+
+If you have an existing AI Factory project that was initialized before subagent support was added, running `ai-factory update` will automatically install all bundled subagents into `.claude/agents/`. This is intentional migration behavior — `loadConfig()` infers `subagentsDir` from the agent type when it is missing from older configs. No opt-in is required; the subagents are part of the standard AI Factory package for Claude Code.
+
+If you already have custom agents in `.claude/agents/`, they will not be touched — AI Factory only manages files listed in `installedSubagents` / `managedSubagents` in `.ai-factory.json`.
+
 ## Why This Exists
 
 AI Factory supports many coding agents, but Claude Code has a native subagent system with isolated context, per-agent tool restrictions, model selection, and project-local agent files.
