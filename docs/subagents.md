@@ -8,9 +8,10 @@
 
 AI Factory supports many coding agents, but Claude Code has a native subagent system with isolated context, per-agent tool restrictions, model selection, and project-local agent files.
 
-This repository uses that feature for five narrow purposes:
+This repository uses that feature for six narrow purposes:
 - splitting `/aif-loop` into small, single-responsibility roles so the Reflex Loop stays predictable, cheaper to run, and easier to reason about
 - adding one planning specialist that can run `/aif-plan` and `/aif-improve` as a local critique/refinement loop before implementation
+- adding one planning coordinator that iteratively launches the planning specialist until the plan passes critique or the iteration budget is exhausted
 - adding one implementation specialist that can run `/aif-implement`, loop on `/aif-verify`, and apply read-only quality sidecars before declaring the work done
 - adding one implementation coordinator that parses plan dependency graphs and dispatches independent tasks in parallel via isolated workers
 - exposing background execution sidecars for top-level Claude agent orchestration
@@ -24,7 +25,7 @@ The intended benefit is:
 ## Scope
 
 Current scope is intentionally small:
-- one planning subagent, one implementation coordinator, two implementation workers, five execution sidecars, and the loop-related subagents are defined
+- one planning subagent, one planning coordinator, one implementation coordinator, two implementation workers, five execution sidecars, and the loop-related subagents are defined
 - source files live in the package `subagents/` directory
 - managed copies are installed into `.claude/agents/`
 - all of them are project-local, not user-global
@@ -36,6 +37,7 @@ If you edit these files manually, reload them in Claude Code with `/agents` or b
 
 | Agent | Purpose | Model | Tools |
 |---|---|---|---|
+| `plan-coordinator` | iteratively launch `plan-polisher` in a critique→improve loop until the plan passes or the iteration budget is exhausted. **Top-level agent only** | `inherit` | `Agent(plan-polisher), Read, Glob, Grep, Bash` |
 | `implement-coordinator` | parse plan dependency graph, dispatch independent tasks in parallel via `implementer-isolation`, merge results. **Top-level agent only** | `inherit` | `Agent(implementer, implementer-isolation), Read, Write, Edit, Glob, Grep, Bash` |
 | `implementer` | execute `/aif-implement`, loop with `/aif-verify`, and coordinate review/security/docs/commit/best-practice sidecars before stopping | `inherit` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
 | `implementer-isolation` | isolated worktree variant of `implementer` for risky or collision-prone execution loops | `inherit` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
@@ -55,15 +57,25 @@ If you edit these files manually, reload them in Claude Code with `/agents` or b
 | `loop-perf-prep` | prepare latency/RPS/perf checks | `haiku` | `Read, Glob, Grep` |
 | `loop-invariant-prep` | prepare invariant and consistency checks | `haiku` | `Read, Glob, Grep` |
 
-## How `plan-polisher` Fits
+## How `plan-polisher` and `plan-coordinator` Fit
 
 `plan-polisher` is not part of `/aif-loop`. It is a self-contained planning worker for Claude Code that:
 - runs an `/aif-plan`-compatible pass directly inside the subagent
 - critiques the generated plan against implementation-readiness criteria
-- applies an `/aif-improve`-compatible refinement pass
-- repeats until critique is materially clean or the refinement cap is reached
+- applies at most one `/aif-improve`-compatible refinement pass
+- returns `needs_further_refinement: yes/no` to the caller
 
 To stay compatible with Claude Code subagent constraints, it does **not** try to spawn nested workers. When the injected skill instructions mention delegated exploration, the agent replaces that with direct `Read`/`Glob`/`Grep`/`Bash` work inside the same context.
+
+`plan-coordinator` sits above `plan-polisher`. It is a **top-level agent** that must be started with `claude --agent plan-coordinator` because it needs to spawn `plan-polisher` as a subagent.
+
+It automates the iterative refinement loop:
+
+1. Launch `plan-polisher` to create the initial plan, critique it, and apply one improvement pass.
+2. Check the result: if `needs_further_refinement: yes`, launch `plan-polisher` again to critique and improve the existing plan.
+3. Repeat until the plan passes critique, the iteration budget is exhausted (default: 3), or stagnation is detected (2 consecutive iterations with no material change).
+
+This gives the user a fire-and-forget planning experience: start `claude --agent plan-coordinator "implement user auth with JWT"` and get back a polished, implementation-ready plan without manual re-runs.
 
 ## How `implementer` Fits
 
@@ -130,6 +142,8 @@ This gives crash recovery — if the session dies mid-run, the plan file shows e
 
 | Situation | Preferred agent | Why |
 |---|---|---|
+| You want a polished plan without manual re-runs | `plan-coordinator` | Iterates critique→improve automatically until the plan is ready |
+| Quick one-shot plan that you will review yourself | `plan-polisher` (as subagent) | Single cycle, less overhead |
 | Plan has independent tasks that can run simultaneously | `implement-coordinator` | Parallel dispatch with automatic worktree isolation |
 | Small or routine implementation on a quiet branch | `implementer` | Lower overhead, faster turnaround |
 | Risky refactor or broad cross-cutting change | `implementer-isolation` | Worktree isolation lowers blast radius |
@@ -248,10 +262,50 @@ Stay with ordinary subagent invocation when:
 
 | Agent | Why top-level | Command |
 |---|---|---|
+| `plan-coordinator` | Must spawn `plan-polisher` iteratively for critique→improve loop | `claude --agent plan-coordinator` |
 | `implement-coordinator` | Must spawn `implementer` and `implementer-isolation` workers in parallel | `claude --agent implement-coordinator` |
 | `implementer` | Can optionally run as top-level to enable background sidecars; also works as ordinary subagent with local fallback | `claude --agent implementer` |
 
 All other agents in this repo are designed as ordinary subagents and do not benefit from top-level execution.
+
+### Quick Start
+
+**Plan a feature (iterative polish until ready):**
+
+```bash
+# Start the plan coordinator — it will loop critique→improve automatically
+claude --agent plan-coordinator "implement user authentication with JWT"
+
+# With options
+claude --agent plan-coordinator "refactor payment module, max_iterations: 5, mode: full"
+
+# Polish an existing plan
+claude --agent plan-coordinator "@.ai-factory/plans/feature-auth.md"
+```
+
+**Implement a plan (parallel task execution):**
+
+```bash
+# Reads the active plan, builds dependency graph, dispatches workers
+claude --agent implement-coordinator
+```
+
+**Full workflow (plan → implement):**
+
+```bash
+# Step 1: Polish the plan
+claude --agent plan-coordinator "add Stripe v3 integration"
+
+# Step 2: Implement it (reads the plan created in step 1)
+claude --agent implement-coordinator
+```
+
+**Simple single-task implementation (no coordinator needed):**
+
+```bash
+# Inside a normal Claude Code session, the agent is invoked as a subagent
+# Use /aif-implement or let Claude pick the implementer automatically
+```
 
 ## Why Only Claude For Now
 

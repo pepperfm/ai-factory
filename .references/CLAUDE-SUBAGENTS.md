@@ -371,6 +371,7 @@ Existing project agents in `.claude/agents/`:
 
 | Agent | Role | Model | Tools |
 |---|---|---|---|
+| `plan-coordinator` | iterative plan refinement coordinator — launches `plan-polisher` in a critique→improve loop until plan passes or iteration budget exhausted. Run as `claude --agent plan-coordinator` | `inherit` | `Agent(plan-polisher), Read, Glob, Grep, Bash` |
 | `implement-coordinator` | parallel execution coordinator — parses plan dependency graph, dispatches independent tasks concurrently via `implementer-isolation`, merges results. Run as `claude --agent implement-coordinator` | `inherit` | `Agent(implementer, implementer-isolation), Read, Write, Edit, Glob, Grep, Bash` |
 | `implementer` | run `/aif-implement`, loop `/aif-verify`, and apply quality sidecars | `inherit` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
 | `implementer-isolation` | isolated worktree variant of the implementation loop | `inherit` | `Agent(best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |

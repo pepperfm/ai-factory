@@ -17,6 +17,7 @@
         "best-practices-sidecar.md",
         "commit-preparer.md",
         "docs-auditor.md",
+        "implement-coordinator.md",
         "implementer.md",
         "implementer-isolation.md",
         "loop-critic.md",
@@ -28,6 +29,7 @@
         "loop-producer.md",
         "loop-refiner.md",
         "loop-test-prep.md",
+        "plan-coordinator.md",
         "plan-polisher.md",
         "review-sidecar.md",
         "security-sidecar.md"
@@ -121,6 +123,7 @@ your-project/
 │   │   ├── best-practices-sidecar.md
 │   │   ├── commit-preparer.md
 │   │   ├── docs-auditor.md
+│   │   ├── implement-coordinator.md
 │   │   ├── implementer.md
 │   │   ├── implementer-isolation.md
 │   │   ├── loop-critic.md
@@ -132,6 +135,7 @@ your-project/
 │   │   ├── loop-producer.md
 │   │   ├── loop-refiner.md
 │   │   ├── loop-test-prep.md
+│   │   ├── plan-coordinator.md
 │   │   ├── plan-polisher.md
 │   │   ├── review-sidecar.md
 │   │   └── security-sidecar.md
