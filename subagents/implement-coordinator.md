@@ -3,7 +3,7 @@ name: implement-coordinator
 description: Coordinate parallel execution of independent plan tasks. For single tasks — implements directly with quality sidecars. For parallel tasks — dispatches implement-worker workers. Use via `claude --agent implement-coordinator`.
 tools: Agent(implement-worker, best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash
 model: inherit
-maxTurns: 20
+maxTurns: 30
 permissionMode: acceptEdits
 skills:
   - aif-implement
@@ -26,11 +26,21 @@ Purpose:
 
 CRITICAL: This agent MUST run as a top-level custom agent session via `claude --agent implement-coordinator`. Normal subagents cannot spawn other subagents. If you detect that you are running as an ordinary subagent, stop immediately and return an error explaining this constraint.
 
+## Input
+
+The user may provide:
+- `@<path>` — explicit plan file (e.g. `@.ai-factory/plans/feature-auth.md`). Highest priority.
+- A description of what to implement — used only if no plan exists yet (stop and ask user to create one first).
+- Nothing — auto-detect plan from branch or fallback.
+
 ## Plan parsing
 
-1. Locate the active plan:
-   - Check `.ai-factory/plans/` for a file matching the current branch name.
-   - Fall back to `.ai-factory/PLAN.md`.
+1. Locate the active plan (same priority as `/aif-implement`):
+   a. If the user provided an explicit `@<path>` argument, use that file.
+   b. Check current git branch (`git branch --show-current`), convert to filename (replace `/` with `-`, add `.md`), look for `.ai-factory/plans/<branch-name>.md`.
+   c. Fall back to `.ai-factory/PLAN.md`.
+   d. If none of the above exist but `.ai-factory/FIX_PLAN.md` exists — stop and tell the user to run `/aif-fix` instead (fix plans have their own workflow).
+   e. If no plan file found at all — stop and report.
 2. Parse all tasks from the plan. Each task has:
    - number (e.g. `Task 1`)
    - description

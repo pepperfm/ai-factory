@@ -4,7 +4,7 @@ description: Execute a single plan task in an isolated worktree — implement, v
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: inherit
 isolation: worktree
-maxTurns: 8
+maxTurns: 16
 permissionMode: acceptEdits
 skills:
   - aif-implement

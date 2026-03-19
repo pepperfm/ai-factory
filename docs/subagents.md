@@ -132,8 +132,9 @@ This gives crash recovery — if the session dies mid-run, the plan file shows e
 |---|---|---|
 | You want a polished plan without manual re-runs | `plan-coordinator` | Iterates critique→improve automatically until the plan is ready |
 | Quick one-shot plan that you will review yourself | `plan-polisher` (as subagent) | Single cycle, less overhead |
-| Plan has independent tasks that can run simultaneously | `implement-coordinator` | Parallel dispatch with automatic worktree isolation |
+| Plan already exists, ready to implement | `implement-coordinator` | Skips planning, goes straight to execution |
 | Any implementation task (single or parallel) | `implement-coordinator` | Handles both modes — direct execution for single tasks, isolation workers for parallel |
+| End-to-end from idea to code | `plan-coordinator` then `implement-coordinator` | Run sequentially — a single combined agent is impractical due to skill/prompt overload |
 
 ## Quality Sidecars
 
@@ -253,34 +254,36 @@ All other agents in this repo are designed as ordinary subagents and do not bene
 
 ### Quick Start
 
-**Plan a feature (iterative polish until ready):**
+**Full workflow (plan → implement):**
+
+```bash
+# Step 1: Polish the plan
+claude --agent plan-coordinator "implement user authentication with JWT"
+
+# Step 2: Implement it (reads the plan created in step 1)
+claude --agent implement-coordinator
+```
+
+A single combined agent is not feasible — Claude Code's single-responsibility constraint means planning and implementation skills in one prompt cause the LLM to skip delegation and take shortcuts.
+
+**Plan only (iterative polish until ready):**
 
 ```bash
 # Start the plan coordinator — it will loop critique→improve automatically
 claude --agent plan-coordinator "implement user authentication with JWT"
 
-# With options
-claude --agent plan-coordinator "refactor payment module, max_iterations: 5, mode: full"
-
 # Polish an existing plan
 claude --agent plan-coordinator "@.ai-factory/plans/feature-auth.md"
 ```
 
-**Implement a plan (parallel task execution):**
+**Implement only (plan already exists):**
 
 ```bash
 # Reads the active plan, builds dependency graph, dispatches workers
 claude --agent implement-coordinator
-```
 
-**Full workflow (plan → implement):**
-
-```bash
-# Step 1: Polish the plan
-claude --agent plan-coordinator "add Stripe v3 integration"
-
-# Step 2: Implement it (reads the plan created in step 1)
-claude --agent implement-coordinator
+# Implement a specific plan file
+claude --agent implement-coordinator "@.ai-factory/plans/feature-auth.md"
 ```
 
 **Simple single-task implementation (no coordinator needed):**

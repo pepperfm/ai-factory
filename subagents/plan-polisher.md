@@ -3,7 +3,7 @@ name: plan-polisher
 description: Create or refresh an /aif-plan plan, critique it, and run one refinement round at most. The caller launches another plan-polisher for further iterations if needed.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: inherit
-maxTurns: 6
+maxTurns: 12
 skills:
   - aif-plan
   - aif-improve
@@ -30,22 +30,32 @@ Default decisions when the caller did not specify them:
 - docs: no / warn-only
 - roadmap linkage: skip unless explicitly requested
 
+Plan file location (CRITICAL — do not deviate):
+- If the caller provided an explicit `@<path>` → use that exact path. This overrides mode-based rules.
+- **Fast mode** (default) → always `.ai-factory/PLAN.md`. No other filename.
+- **Full mode** → `.ai-factory/plans/<branch-name>.md` where `<branch-name>` is the current git branch name (with `/` replaced by `-`). The branch must already exist or be created by the skill workflow.
+- Never invent a filename from the request description.
+- Never create arbitrarily-named files in `.ai-factory/plans/`.
+
 Scope rule:
 - Each invocation handles one plan+critique cycle and at most one refinement pass.
 - Do NOT iterate further — return control to the caller instead.
 
 Workflow:
 1. Parse the user request like `/aif-plan`.
-2. Run one direct `aif-plan`-compatible planning pass and create or refresh the target plan file.
-3. Critique the resulting plan with this rubric:
+2. Determine the target file path using the "Plan file location" rules above.
+3. Explore the codebase (Read, Glob, Grep, Bash) to gather context for the plan.
+4. Generate the plan content following the `/aif-plan` skill template and rules.
+5. **Write the plan to disk** using the Write tool at the resolved path. Ensure the directory exists first (`mkdir -p`). This step is MANDATORY — the plan must be saved as a file, not just generated in context.
+6. Critique the saved plan with this rubric:
    - scope matches the user request
    - tasks are concrete and executable
    - ordering and dependencies are correct
    - integration points, validation, logging, and error paths are covered where relevant
    - no redundant or gold-plated tasks
    - plan follows architecture and skill-context rules
-4. If critique finds material issues, run one direct `aif-improve`-compatible refinement pass against the active plan file and rewrite it.
-5. Return results to the caller — do NOT re-critique or start another refinement round.
+7. If critique finds material issues, run one direct `aif-improve`-compatible refinement pass — read the plan file, improve it, and **write the updated version back to the same file**.
+8. Return results to the caller — do NOT re-critique or start another refinement round.
 
 Output:
 - Return a concise summary only.

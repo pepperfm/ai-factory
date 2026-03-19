@@ -40,6 +40,7 @@ iteration = 0
 # First pass: create the plan
 launch plan-polisher with the user's original request
 collect result → extract plan_path, needs_further_refinement, issues list
+verify plan file exists on disk (Read plan_path) — if missing, stop with error
 
 # Refinement loop
 while needs_further_refinement == yes AND iteration < max_iterations:
@@ -62,7 +63,9 @@ report summary
   - iteration number and max
   - plan file path (after first pass)
   - remaining issues from previous critique
+  - `mode: fast` or `mode: full` (from user config or default)
 - Do NOT pass raw plan content — let plan-polisher read the file itself.
+- On the first dispatch, always include the mode explicitly so plan-polisher uses the correct file location.
 
 ## Stop conditions
 

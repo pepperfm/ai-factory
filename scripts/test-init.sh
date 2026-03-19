@@ -79,7 +79,7 @@ assert_contains "$INIT_OUTPUT" "Installed subagents: ${EXPECTED_SUBAGENTS}" "Cla
 assert_exists "$PROJECT_DIR/.claude/agents/best-practices-sidecar.md" "Claude init must install best-practices sidecar"
 assert_exists "$PROJECT_DIR/.claude/agents/commit-preparer.md" "Claude init must install commit preparer"
 assert_exists "$PROJECT_DIR/.claude/agents/docs-auditor.md" "Claude init must install docs auditor"
-assert_exists "$PROJECT_DIR/.claude/agents/implement-worker.md" "Claude init must install isolated implementation coordinator"
+assert_exists "$PROJECT_DIR/.claude/agents/implement-worker.md" "Claude init must install implement worker"
 assert_exists "$PROJECT_DIR/.claude/agents/loop-orchestrator.md" "Claude init must install bundled subagents"
 assert_exists "$PROJECT_DIR/.claude/agents/plan-polisher.md" "Claude init must install planning subagent"
 assert_exists "$PROJECT_DIR/.claude/agents/review-sidecar.md" "Claude init must install review sidecar"
