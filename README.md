@@ -10,7 +10,7 @@
   </a>
 </p>
 
-![logo](https://github.com/ilhm344/ai-factory/blob/2.x/art/aif1.jpg)
+![logo](https://github.com/lee-to/ai-factory/blob/2.x/art/aif1.jpg)
 
 # AI Factory
 
