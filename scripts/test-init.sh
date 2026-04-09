@@ -136,6 +136,11 @@ assert_exists "$PROJECT_DIR/.codex/agents/plan-coordinator.toml" "Codex init mus
 assert_exists "$PROJECT_DIR/.codex/agents/implement-coordinator.toml" "Codex init must install implement coordinator"
 assert_exists "$PROJECT_DIR/.codex/agents/review-sidecar.toml" "Codex init must install review sidecar"
 assert_exists "$PROJECT_DIR/.codex/config.toml" "Codex init must install config.toml"
+assert_contains "$PROJECT_DIR/.codex/agents/plan-coordinator.toml" "HANDOFF_MODE" "Codex plan coordinator must be handoff-aware"
+assert_contains "$PROJECT_DIR/.codex/agents/plan-coordinator.toml" "HANDOFF_TASK_ID" "Codex plan coordinator must carry handoff task identity guidance"
+assert_contains "$PROJECT_DIR/.codex/agents/implement-coordinator.toml" "HANDOFF_SKIP_REVIEW" "Codex implement coordinator must understand handoff skip-review context"
+assert_contains "$PROJECT_DIR/.codex/agents/implement-coordinator.toml" "do not perform Handoff MCP sync yourself" "Codex implement coordinator must keep autonomous Handoff sync disabled"
+assert_contains "$PROJECT_DIR/.codex/agents/review-sidecar.toml" "Never perform Handoff MCP sync" "Codex review sidecar must keep Handoff sync coordinator-owned"
 
 EXPECTED_CODEX_SUBAGENTS="$EXPECTED_CODEX_SUBAGENTS" node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];const expected=Number(process.env.EXPECTED_CODEX_SUBAGENTS);if(a.id!=='codex')process.exit(1);if(a.subagentsDir!=='.codex/agents')process.exit(1);if(!Array.isArray(a.installedSubagents)||a.installedSubagents.length!==expected)process.exit(1);if(!a.configFiles||a.configFiles[0]!=='config.toml')process.exit(1);if(!a.installedConfigFiles||a.installedConfigFiles[0]!=='config.toml')process.exit(1);if(!a.managedConfigFiles||!a.managedConfigFiles['config.toml'])process.exit(1);" "$PROJECT_DIR/.ai-factory.json"
 

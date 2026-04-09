@@ -59,6 +59,11 @@ Codex receives the same narrow planning/implementation/review contract as Claude
 
 Codex also receives a managed `.codex/config.toml` with conservative `[agents]` defaults so native agent orchestration works in freshly initialized projects.
 
+When those agents are used from `aif-handoff`, the bundle is also **handoff-aware**:
+- top-level coordinators understand explicit `HANDOFF_MODE`, `HANDOFF_TASK_ID`, and `HANDOFF_SKIP_REVIEW` context passed by the parent runtime
+- autonomous Handoff runs stay non-interactive and do not perform Handoff MCP sync from inside the Codex agent itself
+- worker and sidecar agents explicitly keep Handoff sync coordinator-owned
+
 ## Current Bundled Agents
 
 | Agent | Purpose | Model | Tools |

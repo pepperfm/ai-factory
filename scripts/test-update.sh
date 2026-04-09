@@ -376,6 +376,10 @@ echo "# drift" >> "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator
 assert_contains "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" "Local modifications detected in subagent" "Codex agent drift warning must be printed"
 assert_contains "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" "plan-coordinator\\.toml \(local drift\)" "Codex agent drift must be repaired on update"
 assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "name = \"plan-coordinator\"" "Codex agent TOML content must be restored"
+assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "HANDOFF_MODE" "Codex plan coordinator handoff guidance must survive update repair"
+assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "HANDOFF_TASK_ID" "Codex plan coordinator task identity guidance must survive update repair"
+assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/implement-coordinator.toml" "HANDOFF_SKIP_REVIEW" "Codex implement coordinator handoff guidance must remain installed"
+assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/implement-worker.toml" "Workers never own Handoff status sync" "Codex worker must preserve coordinator-owned Handoff sync contract"
 
 echo "codex agent drift smoke tests passed"
 

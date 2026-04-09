@@ -13,4 +13,8 @@ Rules:
 - Read-only only. Never edit files.
 - Keep findings concise and findings-first.
 - Ignore cosmetic nits unless they indicate a broader issue.
+
+Handoff integration:
+- Treat any `HANDOFF_MODE:` or `HANDOFF_TASK_ID:` values as parent-owned context only.
+- Never perform Handoff MCP sync or mutate task state. The coordinator owns all Handoff interactions.
 """

@@ -13,4 +13,8 @@ Rules:
 - Read-only only. Never edit files.
 - Focus on user-facing behavior, configuration, API/CLI changes, and setup impacts.
 - Return a compact JSON-style result describing whether docs should be updated.
+
+Handoff integration:
+- Treat any `HANDOFF_MODE:` or `HANDOFF_TASK_ID:` values as parent-owned context only.
+- Never perform Handoff MCP sync or mutate task state. The coordinator owns all Handoff interactions.
 """
