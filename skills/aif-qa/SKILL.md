@@ -2,7 +2,7 @@
 name: aif-qa
 description: QA workflow for testing a feature or task implementation. Analyzes changes, produces test plans, and describes concrete test scenarios. Use when user says "test this", "write test plan", "what should I test", or "QA this branch".
 argument-hint: "[--all] [change-summary | test-plan | test-cases] [<branch>]"
-allowed-tools: Bash(git *) Read Write Grep Glob AskUserQuestion Task
+allowed-tools: Read Write Grep Glob Bash(git *) Bash(mkdir *) AskUserQuestion Task
 disable-model-invocation: false
 ---
 
@@ -81,7 +81,7 @@ Otherwise → run: git branch --show-current
 
 Store both values for use in all reference files:
 - `resolved_branch` — the branch being analyzed (used to locate/save artifacts)
-- `artifact_dir` — `<resolved paths.qa>/<resolved_branch with / replaced by ->`
+- `artifact_dir` — `<resolved paths.qa>/<branch-slug>` where `branch-slug` is `resolved_branch` with every `/` (and any other non-alphanumeric character except `-`) replaced by `-`; e.g. `feature/my-branch` → `feature-my-branch`
 - `all_mode` — whether to skip inter-stage prompts
 
 **If no mode was provided and `all_mode = false` — ask the user:**
@@ -164,6 +164,12 @@ If any stage fails (e.g. git error, diff too large and user cancels) — stop th
 | High     | Core business logic, user data, payments, security, authorization               |
 | Medium   | Supporting functionality, UI/UX, reports, integrations                          |
 | Low      | Cosmetic changes, rare scenarios, nice-to-have                                  |
+
+## Artifact Ownership and Config Policy
+
+- Primary ownership: QA artifacts under `<paths.qa>/<branch-slug>/` — specifically `change-summary.md`, `test-plan.md`, and `test-cases.md`. The `--all` flag respects the same boundary.
+- Write policy: persistent writes are limited to the three owned artifacts above; no other files are created or modified.
+- Config policy: config-aware, read-only. Reads `paths.description`, `paths.architecture`, `paths.qa`, `language.ui`, and `git.base_branch`; never writes `config.yaml`.
 
 ## Critical Rules
 

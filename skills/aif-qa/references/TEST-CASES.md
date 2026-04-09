@@ -19,7 +19,7 @@ Check for both files:
 AskUserQuestion: The change-summary artifact was not found. Test cases cannot be written without a change summary.
 
 Options:
-1. Run change summary first — /aif-qa change-summary
+1. Run change summary first — /aif-qa change-summary <resolved_branch>
 2. Cancel
 ```
 
@@ -29,7 +29,7 @@ Options:
 AskUserQuestion: The test-plan artifact was not found. Test cases cannot be written without a test plan.
 
 Options:
-1. Create test plan first — /aif-qa test-plan
+1. Create test plan first — /aif-qa test-plan <resolved_branch>
 2. Cancel
 ```
 

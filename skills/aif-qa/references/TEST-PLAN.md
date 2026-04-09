@@ -16,7 +16,7 @@ Check for the file `<artifact_dir>/change-summary.md`.
 AskUserQuestion: The change-summary artifact was not found. A test plan cannot be created without a change summary.
 
 Options:
-1. Run change summary first — /aif-qa change-summary
+1. Run change summary first — /aif-qa change-summary <resolved_branch>
 2. Cancel
 ```
 
@@ -85,6 +85,6 @@ Save the result to `<artifact_dir>/test-plan.md`.
 AskUserQuestion: Test plan saved. Proceed to writing test cases?
 
 Options:
-1. Yes — run /aif-qa test-cases
+1. Yes — run /aif-qa test-cases <resolved_branch>
 2. No — stop here
 ```

@@ -116,13 +116,13 @@ Use the template from `templates/CHANGE-SUMMARY.md`.
 
 ## Step 5: Save Artifact
 
-Save the result to `<artifact_dir>/change-summary.md`.
-
 **Ensure the directory exists before saving:**
 
 ```bash
 mkdir -p <artifact_dir>
 ```
+
+Save the result to `<artifact_dir>/change-summary.md`.
 
 ## Step 6: Next Step
 
@@ -134,6 +134,6 @@ mkdir -p <artifact_dir>
 AskUserQuestion: Change summary saved. Proceed to writing the test plan?
 
 Options:
-1. Yes — run /aif-qa test-plan
+1. Yes — run /aif-qa test-plan <resolved_branch>
 2. No — stop here
 ```
