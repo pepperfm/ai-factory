@@ -4,18 +4,27 @@ export interface AgentConfig {
   configDir: string;
   skillsDir: string;
   subagentsDir?: string;
+  subagentsSourceDir?: string;
+  configFiles?: string[];
+  configFilesSourceDir?: string;
   settingsFile: string | null;
   supportsMcp: boolean;
   skillsCliAgent: string | null;
 }
 
+export const AGENT_IDS = {
+  claude: 'claude',
+  codex: 'codex',
+} as const;
+
 const AGENT_REGISTRY: Record<string, AgentConfig> = {
-  claude: {
-    id: 'claude',
+  [AGENT_IDS.claude]: {
+    id: AGENT_IDS.claude,
     displayName: 'Claude Code',
     configDir: '.claude',
     skillsDir: '.claude/skills',
     subagentsDir: '.claude/agents',
+    subagentsSourceDir: 'subagents',
     settingsFile: '.mcp.json',
     supportsMcp: true,
     skillsCliAgent: 'claude-code',
@@ -29,11 +38,15 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     supportsMcp: true,
     skillsCliAgent: 'cursor',
   },
-  codex: {
-    id: 'codex',
+  [AGENT_IDS.codex]: {
+    id: AGENT_IDS.codex,
     displayName: 'Codex CLI',
     configDir: '.codex',
     skillsDir: '.codex/skills',
+    subagentsDir: '.codex/agents',
+    subagentsSourceDir: 'subagents/codex/agents',
+    configFiles: ['config.toml'],
+    configFilesSourceDir: 'subagents/codex',
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: 'codex',

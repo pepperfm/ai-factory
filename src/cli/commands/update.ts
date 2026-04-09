@@ -6,12 +6,15 @@ import inquirer from 'inquirer';
 import {getCurrentVersion, loadConfig, saveConfig} from '../../core/config.js';
 import {compareExtensionVersions, getExtensionsDir, getNpmVersionCheckResult, loadExtensionManifest} from '../../core/extensions.js';
 import {
+  buildManagedConfigFilesState,
   buildManagedSkillsState,
   buildManagedSubagentsState,
   getAvailableSkills,
   partitionSkills,
+  type ConfigFileUpdateEntry,
   type SkillUpdateEntry,
   type SubagentUpdateEntry,
+  updateConfigFiles,
   updateSkills,
   updateSubagents,
 } from '../../core/installer.js';
@@ -220,6 +223,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const availableSkills = await getAvailableSkills();
     const skillEntriesByAgent = new Map<string, SkillUpdateEntry[]>();
     const subagentEntriesByAgent = new Map<string, SubagentUpdateEntry[]>();
+    const configFileEntriesByAgent = new Map<string, ConfigFileUpdateEntry[]>();
 
     const allReplacedSkills = collectReplacedSkills(extensions);
 
@@ -238,6 +242,10 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       const subagentResult = await updateSubagents(agent, projectDir, { force });
       agent.installedSubagents = subagentResult.installedSubagents;
       subagentEntriesByAgent.set(agent.id, subagentResult.entries);
+
+      const configFileResult = await updateConfigFiles(agent, projectDir, { force });
+      agent.installedConfigFiles = configFileResult.installedConfigFiles;
+      configFileEntriesByAgent.set(agent.id, configFileResult.entries);
     }
 
     // Re-install replacement skills from extensions
@@ -318,6 +326,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       agent.managedSkills = await buildManagedSkillsState(projectDir, agent, managedBaseSkills);
       if (agent.subagentsDir) {
         agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, agent.installedSubagents ?? []);
+      }
+      if ((agent.configFiles ?? []).length > 0) {
+        agent.managedConfigFiles = await buildManagedConfigFilesState(projectDir, agent, agent.installedConfigFiles ?? []);
       }
     }
 
@@ -425,6 +436,48 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
           console.log(chalk.yellow('  WARN: managed subagent state recovered for:'));
           for (const entry of recoveredSubagents) {
             console.log(chalk.yellow(`    - ${entry.subagent} (${formatReason(entry.reason)})`));
+          }
+        }
+      }
+
+      const configFileEntries = configFileEntriesByAgent.get(agent.id) ?? [];
+      if ((agent.configFiles ?? []).length > 0 || configFileEntries.length > 0) {
+        const groupedConfigFiles = groupAndSortEntriesByStatus(configFileEntries, e => e.configFile);
+        console.log(chalk.bold(`[${agent.id}] Config files:`));
+        console.log(chalk.dim(`  changed: ${groupedConfigFiles.changed.length}`));
+        console.log(chalk.dim(`  unchanged: ${groupedConfigFiles.unchanged.length}`));
+        console.log(chalk.dim(`  skipped: ${groupedConfigFiles.skipped.length}`));
+        console.log(chalk.dim(`  removed: ${groupedConfigFiles.removed.length}`));
+
+        if (groupedConfigFiles.changed.length > 0) {
+          console.log(chalk.bold('  Changed:'));
+          for (const entry of groupedConfigFiles.changed) {
+            console.log(chalk.dim(`    - ${entry.configFile} (${formatReason(entry.reason)})`));
+          }
+        }
+
+        if (groupedConfigFiles.skipped.length > 0) {
+          console.log(chalk.bold('  Skipped:'));
+          for (const entry of groupedConfigFiles.skipped) {
+            console.log(chalk.dim(`    - ${entry.configFile} (${formatReason(entry.reason)})`));
+          }
+        }
+
+        if (groupedConfigFiles.removed.length > 0) {
+          console.log(chalk.bold('  Removed:'));
+          for (const entry of groupedConfigFiles.removed) {
+            console.log(chalk.dim(`    - ${entry.configFile} (${formatReason(entry.reason)})`));
+          }
+        }
+
+        const recoveredConfigFiles = groupedConfigFiles.changed.filter(entry => [
+          'missing-managed-state',
+          'missing-installed-artifact',
+        ].includes(entry.reason));
+        if (recoveredConfigFiles.length > 0) {
+          console.log(chalk.yellow('  WARN: managed config state recovered for:'));
+          for (const entry of recoveredConfigFiles) {
+            console.log(chalk.yellow(`    - ${entry.configFile} (${formatReason(entry.reason)})`));
           }
         }
       }

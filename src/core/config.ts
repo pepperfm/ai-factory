@@ -27,6 +27,9 @@ export interface AgentInstallation {
   subagentsDir?: string;
   installedSubagents?: string[];
   managedSubagents?: Record<string, ManagedArtifactState>;
+  configFiles?: string[];
+  installedConfigFiles?: string[];
+  managedConfigFiles?: Record<string, ManagedArtifactState>;
   mcp: McpConfig;
 }
 
@@ -78,6 +81,9 @@ function createAgentInstallation(agentId: string, legacy?: LegacyAiFactoryConfig
     subagentsDir: agent.subagentsDir,
     installedSubagents: [],
     managedSubagents: {},
+    configFiles: agent.configFiles,
+    installedConfigFiles: [],
+    managedConfigFiles: {},
     mcp: normalizeMcp(legacy?.mcp),
   };
 }
@@ -123,6 +129,9 @@ export async function loadConfig(projectDir: string): Promise<AiFactoryConfig | 
         subagentsDir: agent.subagentsDir || agentConfig.subagentsDir,
         installedSubagents: Array.isArray(agent.installedSubagents) ? agent.installedSubagents : [],
         managedSubagents: normalizeManagedArtifacts((agent as { managedSubagents?: unknown }).managedSubagents),
+        configFiles: Array.isArray(agent.configFiles) ? agent.configFiles : agentConfig.configFiles,
+        installedConfigFiles: Array.isArray(agent.installedConfigFiles) ? agent.installedConfigFiles : [],
+        managedConfigFiles: normalizeManagedArtifacts((agent as { managedConfigFiles?: unknown }).managedConfigFiles),
         mcp: normalizeMcp(agent.mcp),
       };
     });

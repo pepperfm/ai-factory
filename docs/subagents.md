@@ -2,17 +2,20 @@
 
 # Subagents
 
-> **Claude Code only.** AI Factory ships bundled Claude subagents from the package `subagents/` directory and installs them into `.claude/agents/` during `ai-factory init` whenever Claude Code is selected. `ai-factory update` refreshes those managed files and preserves this behavior as Claude-only rather than pretending it is portable across other agents.
+> AI Factory ships bundled runtime-native agent assets for **Claude Code** and **Codex CLI**. `ai-factory init` installs Claude markdown subagents into `.claude/agents/`, and installs Codex TOML agents into `.codex/agents/` plus a managed `.codex/config.toml`. `ai-factory update` refreshes those managed files without touching user-created custom agents.
 
 ## Migration Note
 
-If you have an existing AI Factory project that was initialized before subagent support was added, running `ai-factory update` will automatically install all bundled subagents into `.claude/agents/`. This is intentional migration behavior — `loadConfig()` infers `subagentsDir` from the agent type when it is missing from older configs. No opt-in is required; the subagents are part of the standard AI Factory package for Claude Code.
+If you have an existing AI Factory project that was initialized before subagent support was added, running `ai-factory update` will automatically install all bundled subagents into the runtime-specific target directory (`.claude/agents/` for Claude, `.codex/agents/` for Codex). This is intentional migration behavior — `loadConfig()` infers `subagentsDir` from the agent type when it is missing from older configs.
 
-If you already have custom agents in `.claude/agents/`, they will not be touched — AI Factory only manages files listed in `installedSubagents` / `managedSubagents` in `.ai-factory.json`.
+If you already have custom agents in `.claude/agents/` or `.codex/agents/`, they will not be touched — AI Factory only manages files listed in `installedSubagents`, `managedSubagents`, `installedConfigFiles`, and `managedConfigFiles` in `.ai-factory.json`.
 
 ## Why This Exists
 
-AI Factory supports many coding agents, but Claude Code has a native subagent system with isolated context, per-agent tool restrictions, model selection, and project-local agent files.
+AI Factory supports many coding agents, but only a subset expose a native agent/subagent system with project-local agent files and predictable orchestration contracts. Today AI Factory ships two such bundles:
+
+- **Claude Code** — markdown subagents under `.claude/agents/`
+- **Codex CLI** — TOML agent definitions under `.codex/agents/` plus `.codex/config.toml`
 
 This repository uses that feature for six narrow purposes:
 - splitting `/aif-loop` into small, single-responsibility roles so the Reflex Loop stays predictable, cheaper to run, and easier to reason about
@@ -31,12 +34,30 @@ The intended benefit is:
 
 Current scope is intentionally small:
 - one planning subagent, one planning coordinator, one implementation coordinator with its worker, five execution sidecars, and the loop-related subagents are defined
-- source files live in the package `subagents/` directory
-- managed copies are installed into `.claude/agents/`
+- source files live in the package `subagents/` directory (`subagents/*.md` for Claude, `subagents/codex/agents/*.toml` for Codex, and `subagents/codex/config.toml` for the Codex project config)
+- managed copies are installed into the runtime-specific project directory (`.claude/agents/` or `.codex/agents/`)
 - all of them are project-local, not user-global
 - all of them stay specialized for AI Factory internal workflows
 
-If you edit these files manually, reload them in Claude Code with `/agents` or by restarting the session.
+If you edit these files manually, reload them in the target runtime (`/agents` in Claude Code, or restart/reload Codex CLI if it cached agent definitions).
+
+## Codex CLI Bundled Agents
+
+Codex receives the same narrow planning/implementation/review contract as Claude, translated into TOML agent files:
+
+| Agent | Purpose | Model |
+|---|---|---|
+| `plan-coordinator` | own parent planning session and delegate bounded plan polish passes | `gpt-5.4` |
+| `plan-polisher` | create or refine exactly one implementation plan and critique it | `gpt-5.4-mini` |
+| `implement-coordinator` | own parent implementation session and delegate bounded edits and read-only audits | `gpt-5.4` |
+| `implement-worker` | execute one bounded implementation task | `gpt-5.4-mini` |
+| `best-practices-sidecar` | read-only maintainability audit | `gpt-5.4-mini` |
+| `commit-preparer` | read-only commit-readiness audit | `gpt-5.4-mini` |
+| `docs-auditor` | read-only documentation drift audit | `gpt-5.4-mini` |
+| `review-sidecar` | read-only correctness review | `gpt-5.4-mini` |
+| `security-sidecar` | read-only security review | `gpt-5.4-mini` |
+
+Codex also receives a managed `.codex/config.toml` with conservative `[agents]` defaults so native agent orchestration works in freshly initialized projects.
 
 ## Current Bundled Agents
 

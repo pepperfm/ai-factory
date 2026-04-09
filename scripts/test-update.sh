@@ -282,3 +282,170 @@ assert_contains "$CLAUDE_SECOND_OUTPUT" "loop-orchestrator\\.md \(local drift\)"
 assert_contains "$CLAUDE_PROJECT_DIR/.claude/agents/loop-orchestrator.md" "name: loop-orchestrator" "reinstalled subagent content must be restored"
 
 echo "claude subagents smoke tests passed"
+
+# -------------------------------------------------------------------
+# Codex agent assets smoke: update should install bundled Codex agents,
+# persist config.toml state, and heal local drift.
+# -------------------------------------------------------------------
+
+CODEX_PROJECT_DIR="$TMPDIR/update-smoke-codex"
+mkdir -p "$CODEX_PROJECT_DIR"
+
+cat > "$CODEX_PROJECT_DIR/.ai-factory.json" << 'EOF'
+{
+  "version": "2.4.0",
+  "agents": [
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "installedSkills": ["aif"],
+      "mcp": {
+        "github": false,
+        "filesystem": false,
+        "postgres": false,
+        "chromeDevtools": false,
+        "playwright": false
+      }
+    }
+  ],
+  "extensions": []
+}
+EOF
+
+CODEX_FIRST_OUTPUT="$TMPDIR/update-codex-first.log"
+CODEX_SECOND_OUTPUT="$TMPDIR/update-codex-second.log"
+
+(cd "$CODEX_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CODEX_FIRST_OUTPUT" 2>&1)
+assert_contains "$CODEX_FIRST_OUTPUT" "\[codex\] Subagents:" "codex subagents section must be printed"
+assert_contains "$CODEX_FIRST_OUTPUT" "\[codex\] Config files:" "codex config files section must be printed"
+assert_contains "$CODEX_FIRST_OUTPUT" "plan-coordinator\\.toml \(new in package\)" "new Codex agent must be installed"
+assert_contains "$CODEX_FIRST_OUTPUT" "config\\.toml \(new in package\)" "new Codex config file must be installed"
+assert_exists "$CODEX_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "Codex plan coordinator must be installed"
+assert_exists "$CODEX_PROJECT_DIR/.codex/agents/implement-coordinator.toml" "Codex implement coordinator must be installed"
+assert_exists "$CODEX_PROJECT_DIR/.codex/config.toml" "Codex config.toml must be installed"
+
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if(a.subagentsDir!=='.codex/agents')process.exit(1);if(!Array.isArray(a.installedSubagents)||!a.installedSubagents.includes('plan-coordinator.toml'))process.exit(1);if(!a.managedSubagents||!a.managedSubagents['plan-coordinator.toml'])process.exit(1);if(!Array.isArray(a.installedConfigFiles)||!a.installedConfigFiles.includes('config.toml'))process.exit(1);if(!a.managedConfigFiles||!a.managedConfigFiles['config.toml'])process.exit(1);" "$CODEX_PROJECT_DIR/.ai-factory.json"
+
+echo "" >> "$CODEX_PROJECT_DIR/.codex/config.toml"
+echo "# drift" >> "$CODEX_PROJECT_DIR/.codex/config.toml"
+
+(cd "$CODEX_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CODEX_SECOND_OUTPUT" 2>&1)
+assert_contains "$CODEX_SECOND_OUTPUT" "Local modifications detected in config file" "Codex config drift warning must be printed"
+assert_contains "$CODEX_SECOND_OUTPUT" "config\\.toml \(local drift\)" "Codex config drift must be repaired on update"
+assert_contains "$CODEX_PROJECT_DIR/.codex/config.toml" "\\[agents\\]" "Codex config content must be restored"
+
+echo "codex assets smoke tests passed"
+
+# -------------------------------------------------------------------
+# Codex TOML drift smoke: update should heal drift in managed agents,
+# not only in config.toml.
+# -------------------------------------------------------------------
+
+CODEX_AGENT_DRIFT_PROJECT_DIR="$TMPDIR/update-smoke-codex-agent-drift"
+mkdir -p "$CODEX_AGENT_DRIFT_PROJECT_DIR"
+
+cat > "$CODEX_AGENT_DRIFT_PROJECT_DIR/.ai-factory.json" << 'EOF'
+{
+  "version": "2.4.0",
+  "agents": [
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "installedSkills": ["aif"],
+      "mcp": {
+        "github": false,
+        "filesystem": false,
+        "postgres": false,
+        "chromeDevtools": false,
+        "playwright": false
+      }
+    }
+  ],
+  "extensions": []
+}
+EOF
+
+CODEX_AGENT_DRIFT_FIRST_OUTPUT="$TMPDIR/update-codex-agent-drift-first.log"
+CODEX_AGENT_DRIFT_SECOND_OUTPUT="$TMPDIR/update-codex-agent-drift-second.log"
+
+(cd "$CODEX_AGENT_DRIFT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CODEX_AGENT_DRIFT_FIRST_OUTPUT" 2>&1)
+echo "" >> "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml"
+echo "# drift" >> "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml"
+
+(cd "$CODEX_AGENT_DRIFT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" 2>&1)
+assert_contains "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" "Local modifications detected in subagent" "Codex agent drift warning must be printed"
+assert_contains "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" "plan-coordinator\\.toml \(local drift\)" "Codex agent drift must be repaired on update"
+assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "name = \"plan-coordinator\"" "Codex agent TOML content must be restored"
+
+echo "codex agent drift smoke tests passed"
+
+# -------------------------------------------------------------------
+# Combined claude+codex init -> update round-trip smoke.
+# -------------------------------------------------------------------
+
+ROUNDTRIP_PROJECT_DIR="$TMPDIR/update-smoke-roundtrip"
+mkdir -p "$ROUNDTRIP_PROJECT_DIR"
+
+AIF_TEST_ROOT_DIR="$ROOT_DIR" AIF_TEST_PROJECT_DIR="$ROUNDTRIP_PROJECT_DIR" node --input-type=module > /dev/null 2>&1 <<'EOF'
+import path from 'path';
+import { pathToFileURL } from 'url';
+
+process.chdir(process.env.AIF_TEST_PROJECT_DIR);
+
+const moduleUrl = pathToFileURL(path.join(process.env.AIF_TEST_ROOT_DIR, 'dist/cli/commands/init.js')).href;
+const { initCommand } = await import(moduleUrl);
+
+await initCommand({
+  agents: 'claude,codex',
+  skills: 'aif',
+});
+EOF
+
+ROUNDTRIP_OUTPUT="$TMPDIR/update-roundtrip.log"
+(cd "$ROUNDTRIP_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$ROUNDTRIP_OUTPUT" 2>&1)
+assert_contains "$ROUNDTRIP_OUTPUT" "\[claude\] Subagents:" "Round-trip update must still report Claude subagents"
+assert_contains "$ROUNDTRIP_OUTPUT" "\[codex\] Subagents:" "Round-trip update must still report Codex subagents"
+assert_contains "$ROUNDTRIP_OUTPUT" "\[codex\] Config files:" "Round-trip update must still report Codex config files"
+assert_exists "$ROUNDTRIP_PROJECT_DIR/.claude/agents/plan-coordinator.md" "Round-trip project must preserve Claude agents"
+assert_exists "$ROUNDTRIP_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "Round-trip project must preserve Codex agents"
+assert_exists "$ROUNDTRIP_PROJECT_DIR/.codex/config.toml" "Round-trip project must preserve Codex config"
+
+echo "combined init-update round-trip smoke tests passed"
+
+# -------------------------------------------------------------------
+# Claude-only upgrade smoke: legacy configs must not grow Codex config
+# fields when no Codex agent is present.
+# -------------------------------------------------------------------
+
+UPGRADE_CLAUDE_PROJECT_DIR="$TMPDIR/upgrade-smoke-claude-only"
+mkdir -p "$UPGRADE_CLAUDE_PROJECT_DIR"
+
+cat > "$UPGRADE_CLAUDE_PROJECT_DIR/.ai-factory.json" << 'EOF'
+{
+  "version": "1.9.0",
+  "agents": [
+    {
+      "id": "claude",
+      "skillsDir": ".claude/skills",
+      "installedSkills": ["aif"],
+      "mcp": {
+        "github": false,
+        "filesystem": false,
+        "postgres": false,
+        "chromeDevtools": false,
+        "playwright": false
+      }
+    }
+  ],
+  "extensions": []
+}
+EOF
+
+UPGRADE_CLAUDE_OUTPUT="$TMPDIR/upgrade-claude-only.log"
+(cd "$UPGRADE_CLAUDE_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" upgrade > "$UPGRADE_CLAUDE_OUTPUT" 2>&1)
+assert_contains "$UPGRADE_CLAUDE_OUTPUT" "Upgrade to v2 complete" "Claude-only upgrade should complete"
+assert_exists "$UPGRADE_CLAUDE_PROJECT_DIR/.claude/agents/plan-polisher.md" "Claude-only upgrade should install Claude subagents"
+assert_not_exists "$UPGRADE_CLAUDE_PROJECT_DIR/.codex/config.toml" "Claude-only upgrade must not create Codex config"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if(a.id!=='claude')process.exit(1);if(Array.isArray(a.configFiles)&&a.configFiles.length>0)process.exit(1);if(Array.isArray(a.installedConfigFiles)&&a.installedConfigFiles.length>0)process.exit(1);if(a.managedConfigFiles&&Object.keys(a.managedConfigFiles).length>0)process.exit(1);" "$UPGRADE_CLAUDE_PROJECT_DIR/.ai-factory.json"
+
+echo "claude-only upgrade smoke tests passed"

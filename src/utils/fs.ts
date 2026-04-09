@@ -18,6 +18,10 @@ export function getSubagentsDir(): string {
   return path.join(getPackageRoot(), 'subagents');
 }
 
+export function getPackagePath(...segments: string[]): string {
+  return path.join(getPackageRoot(), ...segments);
+}
+
 export function getMcpDir(): string {
   return path.join(getPackageRoot(), 'mcp');
 }
