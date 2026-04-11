@@ -12,7 +12,8 @@ import {
   getAvailableSkills,
   partitionSkills,
 } from '../../core/installer.js';
-import { getAgentConfig } from '../../core/agents.js';
+import { getAgentConfig, hydrateProjectAgentRegistry } from '../../core/agents.js';
+import { getAgentConfig, hydrateProjectAgentRegistry } from '../../core/agents.js';
 import { fileExists, removeDirectory, removeFile } from '../../utils/fs.js';
 
 // Old v1 skill directory names that were renamed to aif-* in v2
@@ -129,6 +130,10 @@ export async function upgradeCommand(): Promise<void> {
     process.exit(1);
   }
 
+  await hydrateProjectAgentRegistry(projectDir, {
+    extensionNames: config.extensions?.map(extension => extension.name) ?? [],
+  });
+
   // Step 1: Migrate legacy plan directories to .ai-factory/plans/
   // Also ensure newer v2 working directories exist.
   const aiFactoryDir = path.join(projectDir, '.ai-factory');
@@ -218,11 +223,11 @@ export async function upgradeCommand(): Promise<void> {
       skills: availableSkills,
       agentId: agent.id,
     });
-    const installedSubagents = agent.subagentsDir
+    const installedAgentFiles = agent.agentsDir
       ? await installSubagents({
         projectDir,
         agentId: agent.id,
-        subagentsDir: agent.subagentsDir,
+        agentsDir: agent.agentsDir,
       })
       : [];
     const effectiveConfigFiles = agent.configFiles ?? agentConfig.configFiles ?? [];
@@ -235,9 +240,9 @@ export async function upgradeCommand(): Promise<void> {
       : [];
 
     agent.installedSkills = [...installedSkills, ...customSkills];
-    if (agent.subagentsDir) {
-      agent.installedSubagents = installedSubagents;
-      agent.managedSubagents = await buildManagedSubagentsState(projectDir, agent, installedSubagents);
+    if (agent.agentsDir) {
+      agent.installedAgentFiles = installedAgentFiles;
+      agent.managedAgentFiles = await buildManagedSubagentsState(projectDir, agent, installedAgentFiles);
     }
     if (effectiveConfigFiles.length > 0) {
       agent.configFiles = effectiveConfigFiles;

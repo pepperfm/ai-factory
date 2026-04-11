@@ -1,12 +1,31 @@
+import { loadAllExtensions } from './extensions.js';
+
+export type AgentFileExtension = '.md' | '.toml';
+
 export interface AgentConfig {
   id: string;
   displayName: string;
   configDir: string;
   skillsDir: string;
-  subagentsDir?: string;
-  subagentsSourceDir?: string;
+  agentsDir?: string;
+  agentFileExtension?: AgentFileExtension;
+  settingsFile: string | null;
+  supportsMcp: boolean;
+  skillsCliAgent: string | null;
+  source: 'builtin' | 'extension';
+  extensionName?: string;
   configFiles?: string[];
   configFilesSourceDir?: string;
+  agentsSourceDir?: string;
+}
+
+export interface RuntimeDefinitionInput {
+  id: string;
+  displayName: string;
+  configDir: string;
+  skillsDir: string;
+  agentsDir?: string;
+  agentFileExtension?: AgentFileExtension;
   settingsFile: string | null;
   supportsMcp: boolean;
   skillsCliAgent: string | null;
@@ -16,18 +35,24 @@ export const AGENT_IDS = {
   claude: 'claude',
   codex: 'codex',
 } as const;
+export interface RuntimeManifestInput {
+  name: string;
+  agents?: RuntimeDefinitionInput[];
+}
 
-const AGENT_REGISTRY: Record<string, AgentConfig> = {
+const BUILTIN_AGENT_REGISTRY: Record<string, AgentConfig> = {
   [AGENT_IDS.claude]: {
     id: AGENT_IDS.claude,
     displayName: 'Claude Code',
     configDir: '.claude',
     skillsDir: '.claude/skills',
-    subagentsDir: '.claude/agents',
-    subagentsSourceDir: 'subagents',
+    agentsDir: '.claude/agents',
+    agentFileExtension: '.md',
+    agentsSourceDir: 'subagents',
     settingsFile: '.mcp.json',
     supportsMcp: true,
     skillsCliAgent: 'claude-code',
+    source: 'builtin',
   },
   cursor: {
     id: 'cursor',
@@ -37,19 +62,22 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: '.cursor/mcp.json',
     supportsMcp: true,
     skillsCliAgent: 'cursor',
+    source: 'builtin',
   },
   [AGENT_IDS.codex]: {
     id: AGENT_IDS.codex,
     displayName: 'Codex CLI',
     configDir: '.codex',
     skillsDir: '.codex/skills',
-    subagentsDir: '.codex/agents',
-    subagentsSourceDir: 'subagents/codex/agents',
+    agentsDir: '.codex/agents',
+    agentFileExtension: '.toml',
+    agentsSourceDir: 'subagents/codex/agents',
     configFiles: ['config.toml'],
     configFilesSourceDir: 'subagents/codex',
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: 'codex',
+    source: 'builtin',
   },
   copilot: {
     id: 'copilot',
@@ -59,6 +87,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: '.vscode/mcp.json',
     supportsMcp: true,
     skillsCliAgent: 'github-copilot',
+    source: 'builtin',
   },
   gemini: {
     id: 'gemini',
@@ -68,6 +97,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: 'gemini-cli',
+    source: 'builtin',
   },
   junie: {
     id: 'junie',
@@ -77,6 +107,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: 'junie',
+    source: 'builtin',
   },
   qwen: {
     id: 'qwen',
@@ -86,6 +117,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: '.qwen/settings.json',
     supportsMcp: true,
     skillsCliAgent: null,
+    source: 'builtin',
   },
   windsurf: {
     id: 'windsurf',
@@ -95,6 +127,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: 'windsurf',
+    source: 'builtin',
   },
   warp: {
     id: 'warp',
@@ -104,6 +137,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: null,
+    source: 'builtin',
   },
   zencoder: {
     id: 'zencoder',
@@ -113,6 +147,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: 'zencoder',
+    source: 'builtin',
   },
   roocode: {
     id: 'roocode',
@@ -122,6 +157,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: '.roo/mcp.json',
     supportsMcp: true,
     skillsCliAgent: 'roo',
+    source: 'builtin',
   },
   kilocode: {
     id: 'kilocode',
@@ -131,6 +167,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: '.kilocode/mcp.json',
     supportsMcp: true,
     skillsCliAgent: 'kilo',
+    source: 'builtin',
   },
   antigravity: {
     id: 'antigravity',
@@ -140,6 +177,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: 'antigravity',
+    source: 'builtin',
   },
   opencode: {
     id: 'opencode',
@@ -149,6 +187,7 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: 'opencode.json',
     supportsMcp: true,
     skillsCliAgent: 'opencode',
+    source: 'builtin',
   },
   universal: {
     id: 'universal',
@@ -158,24 +197,129 @@ const AGENT_REGISTRY: Record<string, AgentConfig> = {
     settingsFile: null,
     supportsMcp: false,
     skillsCliAgent: null,
+    source: 'builtin',
   },
 };
 
+const extensionAgentRegistry = new Map<string, AgentConfig>();
+
+function getRegistryEntries(): AgentConfig[] {
+  return [
+    ...Object.values(BUILTIN_AGENT_REGISTRY),
+    ...extensionAgentRegistry.values(),
+  ];
+}
+
+function isValidRuntimeDefinition(definition: RuntimeDefinitionInput): boolean {
+  return Boolean(
+    definition.id &&
+      definition.displayName &&
+      definition.configDir &&
+      definition.skillsDir,
+  );
+}
+
+function normalizeRuntimeDefinition(
+  definition: RuntimeDefinitionInput,
+  extensionName: string,
+): AgentConfig {
+  return {
+    id: definition.id,
+    displayName: definition.displayName,
+    configDir: definition.configDir,
+    skillsDir: definition.skillsDir,
+    agentsDir: definition.agentsDir,
+    agentFileExtension: definition.agentFileExtension,
+    settingsFile: definition.settingsFile,
+    supportsMcp: definition.supportsMcp,
+    skillsCliAgent: definition.skillsCliAgent,
+    source: 'extension',
+    extensionName,
+  };
+}
+
+export function resetExtensionAgentRegistry(): void {
+  extensionAgentRegistry.clear();
+}
+
+export function registerRuntimeDefinitions(
+  definitions: RuntimeDefinitionInput[],
+  extensionName: string,
+): void {
+  for (const definition of definitions) {
+    if (!isValidRuntimeDefinition(definition)) {
+      throw new Error(`Extension "${extensionName}" defines an invalid runtime. Required fields: id, displayName, configDir, skillsDir.`);
+    }
+
+    if (definition.id in BUILTIN_AGENT_REGISTRY) {
+      throw new Error(`Extension "${extensionName}" cannot redefine built-in runtime "${definition.id}".`);
+    }
+
+    // The registry is reset before each hydrate, but this still guards
+    // collisions between different installed extensions and any extra
+    // manifests being validated in the same hydration pass.
+    const existing = extensionAgentRegistry.get(definition.id);
+    if (existing && existing.extensionName !== extensionName) {
+      throw new Error(
+        `Runtime "${definition.id}" is already provided by extension "${existing.extensionName}". ` +
+        `Extension "${extensionName}" cannot claim the same runtime id.`,
+      );
+    }
+
+    extensionAgentRegistry.set(definition.id, normalizeRuntimeDefinition(definition, extensionName));
+  }
+}
+
+export async function hydrateProjectAgentRegistry(
+  projectDir: string,
+  options?: {
+    extensionNames?: string[];
+    extraManifests?: RuntimeManifestInput[];
+  },
+): Promise<void> {
+  resetExtensionAgentRegistry();
+
+  const extraNames = new Set((options?.extraManifests ?? []).map(manifest => manifest.name));
+  const extensionNames = (options?.extensionNames ?? []).filter(name => !extraNames.has(name));
+
+  if (extensionNames.length > 0) {
+    const installed = await loadAllExtensions(projectDir, extensionNames);
+    for (const { manifest } of installed) {
+      if (manifest.agents?.length) {
+        registerRuntimeDefinitions(manifest.agents, manifest.name);
+      }
+    }
+  }
+
+  for (const manifest of options?.extraManifests ?? []) {
+    if (manifest.agents?.length) {
+      registerRuntimeDefinitions(manifest.agents, manifest.name);
+    }
+  }
+}
+
+export function findAgentConfig(id: string): AgentConfig | undefined {
+  if (id in BUILTIN_AGENT_REGISTRY) {
+    return BUILTIN_AGENT_REGISTRY[id];
+  }
+  return extensionAgentRegistry.get(id);
+}
+
 export function getAgentConfig(id: string): AgentConfig {
-  const config = AGENT_REGISTRY[id];
+  const config = findAgentConfig(id);
   if (!config) {
-    throw new Error(`Unknown agent: ${id}. Available: ${Object.keys(AGENT_REGISTRY).join(', ')}`);
+    throw new Error(`Unknown agent: ${id}. Available: ${getAvailableAgentIds().join(', ')}`);
   }
   return config;
 }
 
 export function getAgentChoices(): { name: string; value: string }[] {
-  return Object.values(AGENT_REGISTRY).map(agent => ({
+  return getRegistryEntries().map(agent => ({
     name: `${agent.displayName} (${agent.configDir}/)`,
     value: agent.id,
   }));
 }
 
 export function getAvailableAgentIds(): string[] {
-  return Object.keys(AGENT_REGISTRY);
+  return getRegistryEntries().map(agent => agent.id);
 }

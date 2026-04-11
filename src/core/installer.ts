@@ -1,4 +1,5 @@
 import path from 'path';
+import { existsSync, lstatSync } from 'fs';
 import { createHash } from 'crypto';
 import {
   copyDirectory,
@@ -18,6 +19,8 @@ import {
   hashDirectory,
 } from '../utils/fs.js';
 import type { AgentInstallation, ManagedArtifactState } from './config.js';
+import { AGENT_IDS, getAgentConfig } from './agents.js';
+import type { ExtensionAgentFile } from './extensions.js';
 import { AGENT_IDS, getAgentConfig } from './agents.js';
 import { processSkillTemplates, buildTemplateVars, processTemplate } from './template.js';
 import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from './transformer.js';
@@ -44,7 +47,7 @@ export interface SubagentUpdateEntry {
 }
 
 export interface UpdateSubagentsResult {
-  installedSubagents: string[];
+  installedAgentFiles: string[];
   entries: SubagentUpdateEntry[];
 }
 
@@ -73,8 +76,9 @@ export interface InstallOptions {
 
 export interface InstallSubagentsOptions {
   projectDir: string;
-  agentId: string;
-  subagentsDir: string;
+  agentId?: string;
+  agentsDir?: string;
+  subagentsDir?: string;
 }
 
 export interface InstallConfigFilesOptions {
@@ -92,10 +96,11 @@ interface ResolvedSkillPaths {
   flat: boolean;
 }
 
-interface ResolvedSubagentPaths {
+interface ResolvedAgentFilePaths {
   sourceFile: string;
   targetFile: string;
-  relPath: string;
+  sourceRelPath: string;
+  targetRelPath: string;
 }
 
 interface ResolvedConfigFilePaths {
@@ -207,17 +212,39 @@ function resolveSkillPaths(
   };
 }
 
-export function resolveManagedSubagentPaths(projectDir: string, agentId: string, subagentsDir: string, relPath: string): ResolvedSubagentPaths {
-  assertSafeManagedRelativePath(relPath);
-  const agentConfig = getAgentConfig(agentId);
-  const sourceRoot = agentConfig.subagentsSourceDir
-    ? getPackagePath(agentConfig.subagentsSourceDir)
-    : getSubagentsDir();
-  const targetRoot = path.join(projectDir, subagentsDir);
+function ensureTargetWithinRoot(targetRoot: string, targetFile: string): void {
+  const resolvedRoot = path.resolve(targetRoot);
+
+  // Reject a symlinked root when it already exists so managed agent files
+  // cannot be redirected outside the project by replacing `.claude/agents`
+  // or another runtime-local agents directory with a symlink.
+  if (existsSync(resolvedRoot) && lstatSync(resolvedRoot).isSymbolicLink()) {
+    throw new Error(`Agent files directory must not be a symbolic link: ${targetRoot}`);
+  }
+
+  const resolvedTarget = path.resolve(targetFile);
+
+  if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`)) {
+    throw new Error(`Agent file target escapes agents directory: ${targetFile}`);
+  }
+}
+
+function resolveAgentFilePaths(
+  projectDir: string,
+  agentsDir: string,
+  sourceRoot: string,
+  sourceRelPath: string,
+  targetRelPath: string = sourceRelPath,
+): ResolvedAgentFilePaths {
+  const targetRoot = path.join(projectDir, agentsDir);
+  const sourceFile = path.join(sourceRoot, sourceRelPath);
+  const targetFile = path.join(targetRoot, targetRelPath);
+  ensureTargetWithinRoot(targetRoot, targetFile);
   return {
-    sourceFile: path.join(sourceRoot, relPath),
-    targetFile: path.join(targetRoot, relPath),
-    relPath,
+    sourceFile,
+    targetFile,
+    sourceRelPath,
+    targetRelPath,
   };
 }
 
@@ -237,6 +264,35 @@ export function resolveManagedConfigFilePaths(projectDir: string, agentId: strin
     targetFile: path.join(projectDir, agentConfig.configDir, relPath),
     relPath,
   };
+}
+
+function getBundledAgentFilesSourceDir(agentId: string): string | null {
+  const agentConfig = getAgentConfig(agentId);
+  if (agentConfig.source !== 'builtin') {
+    return null;
+  }
+
+  if (agentConfig.agentsSourceDir) {
+    return getPackagePath(agentConfig.agentsSourceDir);
+  }
+
+  return agentId === AGENT_IDS.claude ? getSubagentsDir() : null;
+}
+
+export function resolveManagedSubagentPaths(
+  projectDir: string,
+  agentId: string,
+  agentsDir: string,
+  relPath: string,
+): ResolvedAgentFilePaths {
+  assertSafeManagedRelativePath(relPath);
+  const sourceRoot = getBundledAgentFilesSourceDir(agentId);
+
+  if (!sourceRoot) {
+    throw new Error(`Agent "${agentId}" does not define bundled agent files.`);
+  }
+
+  return resolveAgentFilePaths(projectDir, agentsDir, sourceRoot, relPath);
 }
 
 async function hashInstalledSkill(paths: ResolvedSkillPaths): Promise<string | null> {
@@ -309,11 +365,11 @@ export async function buildManagedSkillsState(
   return state;
 }
 
-export async function getAvailableSubagents(agentId: string): Promise<string[]> {
-  const agentConfig = getAgentConfig(agentId);
-  const packageSubagentsDir = agentConfig.subagentsSourceDir
-    ? getPackagePath(agentConfig.subagentsSourceDir)
-    : getSubagentsDir();
+export async function getAvailableSubagents(agentId: string = 'claude'): Promise<string[]> {
+  const packageSubagentsDir = getBundledAgentFilesSourceDir(agentId);
+  if (!packageSubagentsDir) {
+    return [];
+  }
   const files = await listFilesRecursive(packageSubagentsDir);
   const relPaths = files.map(filePath => path.relative(packageSubagentsDir, filePath).replaceAll('\\', '/'));
 
@@ -334,11 +390,10 @@ async function getManagedSubagentState(
   agentInstallation: AgentInstallation,
   relPath: string,
 ): Promise<ManagedArtifactState | null> {
-  if (!agentInstallation.subagentsDir) {
+  if (!agentInstallation.agentsDir) {
     return null;
   }
-
-  const paths = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.subagentsDir, relPath);
+  const paths = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.agentsDir, relPath);
   const sourceHash = await hashManagedFile(paths.sourceFile, relPath);
   if (!sourceHash) {
     return null;
@@ -362,7 +417,7 @@ export async function buildManagedSubagentsState(
 ): Promise<Record<string, ManagedArtifactState>> {
   const state: Record<string, ManagedArtifactState> = {};
 
-  if (!agentInstallation.subagentsDir) {
+  if (!agentInstallation.agentsDir) {
     return state;
   }
 
@@ -499,18 +554,23 @@ export async function installSkills(options: InstallOptions): Promise<string[]> 
 }
 
 export async function installSubagents(options: InstallSubagentsOptions): Promise<string[]> {
-  const { projectDir, agentId, subagentsDir } = options;
+  const { projectDir } = options;
+  const agentId = options.agentId ?? 'claude';
+  const agentsDir = options.agentsDir ?? options.subagentsDir;
+  if (!agentsDir) {
+    return [];
+  }
   const availableSubagents = await getAvailableSubagents(agentId);
 
   if (availableSubagents.length === 0) {
     return [];
   }
 
-  const targetRoot = path.join(projectDir, subagentsDir);
+  const targetRoot = path.join(projectDir, agentsDir);
   await ensureDir(targetRoot);
 
   for (const relPath of availableSubagents) {
-    const paths = resolveManagedSubagentPaths(projectDir, agentId, subagentsDir, relPath);
+    const paths = resolveManagedSubagentPaths(projectDir, agentId, agentsDir, relPath);
     await copyFile(paths.sourceFile, paths.targetFile);
   }
 
@@ -602,7 +662,7 @@ async function removeSubagentsByName(
   agentInstallation: AgentInstallation,
   subagentNames: string[],
 ): Promise<string[]> {
-  if (!agentInstallation.subagentsDir) {
+  if (!agentInstallation.agentsDir) {
     return [];
   }
 
@@ -610,7 +670,9 @@ async function removeSubagentsByName(
 
   for (const relPath of subagentNames) {
     try {
-      const { targetFile } = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.subagentsDir, relPath);
+      const targetRoot = path.join(projectDir, agentInstallation.agentsDir);
+      const targetFile = path.join(targetRoot, relPath);
+      ensureTargetWithinRoot(targetRoot, targetFile);
       await removeFile(targetFile);
       removed.push(relPath);
     } catch {
@@ -791,9 +853,9 @@ export async function updateSubagents(
   projectDir: string,
   options: UpdateSkillsOptions = {},
 ): Promise<UpdateSubagentsResult> {
-  if (!agentInstallation.subagentsDir) {
+  if (!agentInstallation.agentsDir) {
     return {
-      installedSubagents: [],
+      installedAgentFiles: [],
       entries: [],
     };
   }
@@ -801,12 +863,12 @@ export async function updateSubagents(
   const { force = false } = options;
   const availableSubagents = await getAvailableSubagents(agentInstallation.id);
   const availableSet = new Set(availableSubagents);
-  const previousInstalled = agentInstallation.installedSubagents ?? [];
+  const previousInstalled = agentInstallation.installedAgentFiles ?? [];
   const previousInstalledSet = new Set(previousInstalled);
-  const previousManaged = agentInstallation.managedSubagents ?? {};
+  const previousManaged = agentInstallation.managedAgentFiles ?? {};
   const entries: SubagentUpdateEntry[] = [];
 
-  const removedSubagents = previousInstalled.filter(subagent => !availableSet.has(subagent));
+  const removedSubagents = previousInstalled.filter((subagent: string) => !availableSet.has(subagent));
   if (removedSubagents.length > 0) {
     await removeSubagentsByName(projectDir, agentInstallation, removedSubagents);
     for (const subagent of removedSubagents) {
@@ -821,7 +883,7 @@ export async function updateSubagents(
   const shouldInstall = new Map<string, { install: boolean; reason: string }>();
 
   for (const relPath of availableSubagents) {
-    const paths = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.subagentsDir, relPath);
+    const paths = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.agentsDir, relPath);
     const sourceHash = await hashManagedFile(paths.sourceFile, relPath);
     const installedHash = await hashManagedFile(paths.targetFile, relPath);
     const previousState = previousManaged[relPath];
@@ -857,7 +919,7 @@ export async function updateSubagents(
     }
 
     if (previousState.installedHash !== installedHash) {
-      console.warn(`Warning: Local modifications detected in subagent "${relPath}" — will be overwritten by update.`);
+      console.warn(`Warning: Local modifications detected in agent file "${relPath}" — will be overwritten by update.`);
       shouldInstall.set(relPath, { install: true, reason: 'installed-hash-drift' });
       continue;
     }
@@ -870,7 +932,7 @@ export async function updateSubagents(
 
   for (const relPath of subagentsToInstall) {
     try {
-      const paths = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.subagentsDir, relPath);
+      const paths = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.agentsDir, relPath);
       await copyFile(paths.sourceFile, paths.targetFile);
       installedSubagents.push(relPath);
     } catch {
@@ -905,7 +967,7 @@ export async function updateSubagents(
   const syncedSubagents = availableSubagents.filter(relPath => installedSet.has(relPath) || previousInstalledSet.has(relPath));
 
   return {
-    installedSubagents: syncedSubagents,
+    installedAgentFiles: syncedSubagents,
     entries,
   };
 }
@@ -1043,4 +1105,78 @@ export async function updateConfigFiles(
     installedConfigFiles: syncedFiles,
     entries,
   };
+export class AgentFileInstallError extends Error {
+  installedTargets: string[];
+
+  constructor(message: string, installedTargets: string[]) {
+    super(message);
+    this.name = 'AgentFileInstallError';
+    this.installedTargets = installedTargets;
+  }
+}
+
+export async function installExtensionAgentFiles(
+  projectDir: string,
+  agentInstallation: AgentInstallation,
+  extensionDir: string,
+  agentFiles: ExtensionAgentFile[],
+): Promise<string[]> {
+  const agentsDir = agentInstallation.agentsDir;
+  if (!agentsDir || agentFiles.length === 0) {
+    return [];
+  }
+
+  const installed: string[] = [];
+
+  for (const agentFile of agentFiles) {
+    if (agentFile.runtime !== agentInstallation.id) {
+      continue;
+    }
+
+    try {
+      const paths = resolveAgentFilePaths(
+        projectDir,
+        agentsDir,
+        extensionDir,
+        agentFile.source,
+        agentFile.target,
+      );
+      await copyFile(paths.sourceFile, paths.targetFile);
+      installed.push(agentFile.target);
+    } catch (error) {
+      throw new AgentFileInstallError(
+        `Could not install extension agent file "${agentFile.target}" for runtime "${agentInstallation.id}": ${(error as Error).message}`,
+        installed,
+      );
+    }
+  }
+
+  return installed;
+}
+
+export async function removeExtensionAgentFiles(
+  projectDir: string,
+  agentInstallation: AgentInstallation,
+  targets: string[],
+): Promise<string[]> {
+  const agentsDir = agentInstallation.agentsDir;
+  if (!agentsDir || targets.length === 0) {
+    return [];
+  }
+
+  const removed: string[] = [];
+  const targetRoot = path.join(projectDir, agentsDir);
+
+  for (const relPath of targets) {
+    try {
+      const targetFile = path.join(targetRoot, relPath);
+      ensureTargetWithinRoot(targetRoot, targetFile);
+      await removeFile(targetFile);
+      removed.push(relPath);
+    } catch {
+      // File may already be absent.
+    }
+  }
+
+  return removed;
 }

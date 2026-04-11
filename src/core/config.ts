@@ -1,7 +1,7 @@
 import path from 'path';
 import { createRequire } from 'module';
 import { readJsonFile, writeJsonFile, fileExists } from '../utils/fs.js';
-import { getAgentConfig } from './agents.js';
+import { findAgentConfig, getAgentConfig } from './agents.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -24,9 +24,9 @@ export interface AgentInstallation {
   skillsDir: string;
   installedSkills: string[];
   managedSkills?: Record<string, ManagedArtifactState>;
-  subagentsDir?: string;
-  installedSubagents?: string[];
-  managedSubagents?: Record<string, ManagedArtifactState>;
+  agentsDir?: string;
+  installedAgentFiles?: string[];
+  managedAgentFiles?: Record<string, ManagedArtifactState>;
   configFiles?: string[];
   installedConfigFiles?: string[];
   managedConfigFiles?: Record<string, ManagedArtifactState>;
@@ -54,6 +54,23 @@ interface LegacyAiFactoryConfig {
   mcp?: Partial<McpConfig>;
 }
 
+interface LegacyAgentInstallationShape {
+  id: string;
+  skillsDir?: string;
+  installedSkills?: string[];
+  managedSkills?: unknown;
+  agentsDir?: string;
+  installedAgentFiles?: string[];
+  managedAgentFiles?: unknown;
+  subagentsDir?: string;
+  installedSubagents?: string[];
+  managedSubagents?: unknown;
+  configFiles?: string[];
+  installedConfigFiles?: string[];
+  managedConfigFiles?: unknown;
+  mcp?: Partial<McpConfig>;
+}
+
 const CONFIG_FILENAME = '.ai-factory.json';
 const CURRENT_VERSION: string = pkg.version;
 
@@ -78,9 +95,9 @@ function createAgentInstallation(agentId: string, legacy?: LegacyAiFactoryConfig
     id: agentId,
     installedSkills: legacy?.installedSkills ?? [],
     managedSkills: {},
-    subagentsDir: agent.subagentsDir,
-    installedSubagents: [],
-    managedSubagents: {},
+    agentsDir: agent.agentsDir,
+    installedAgentFiles: [],
+    managedAgentFiles: {},
     configFiles: agent.configFiles,
     installedConfigFiles: [],
     managedConfigFiles: {},
@@ -95,16 +112,21 @@ function normalizeManagedArtifacts(raw: unknown): Record<string, ManagedArtifact
 
   const result: Record<string, ManagedArtifactState> = {};
 
-  for (const [skillName, state] of Object.entries(raw as Record<string, unknown>)) {
-    if (!skillName || typeof state !== 'object' || !state) {
+  for (const [artifactName, state] of Object.entries(raw as Record<string, unknown>)) {
+    if (!artifactName || typeof state !== 'object' || !state) {
       continue;
     }
 
     const sourceHash = (state as { sourceHash?: unknown }).sourceHash;
     const installedHash = (state as { installedHash?: unknown }).installedHash;
 
-    if (typeof sourceHash === 'string' && sourceHash.length > 0 && typeof installedHash === 'string' && installedHash.length > 0) {
-      result[skillName] = { sourceHash, installedHash };
+    if (
+      typeof sourceHash === 'string'
+      && sourceHash.length > 0
+      && typeof installedHash === 'string'
+      && installedHash.length > 0
+    ) {
+      result[artifactName] = { sourceHash, installedHash };
     }
   }
 
@@ -120,19 +142,40 @@ export async function loadConfig(projectDir: string): Promise<AiFactoryConfig | 
 
   if (Array.isArray(raw.agents)) {
     const normalizedAgents = raw.agents.map(agent => {
-      const agentConfig = getAgentConfig(agent.id);
+      const legacyAgent = agent as unknown as LegacyAgentInstallationShape;
+      const agentConfig = findAgentConfig(agent.id);
+      const skillsDir = legacyAgent.skillsDir || agentConfig?.skillsDir;
+
+      if (!skillsDir) {
+        throw new Error(
+          `Configured agent "${agent.id}" is missing "skillsDir" and no runtime definition is currently registered for it.`,
+        );
+      }
+
+      const agentsDir = legacyAgent.agentsDir
+        || legacyAgent.subagentsDir
+        || agentConfig?.agentsDir;
+      const installedAgentFiles = Array.isArray(legacyAgent.installedAgentFiles)
+        ? legacyAgent.installedAgentFiles
+        : Array.isArray(legacyAgent.installedSubagents)
+          ? legacyAgent.installedSubagents
+          : [];
+      const managedAgentFiles = normalizeManagedArtifacts(
+        legacyAgent.managedAgentFiles ?? legacyAgent.managedSubagents,
+      );
+
       return {
         id: agent.id,
-        skillsDir: agent.skillsDir || agentConfig.skillsDir,
-        installedSkills: Array.isArray(agent.installedSkills) ? agent.installedSkills : [],
-        managedSkills: normalizeManagedArtifacts((agent as { managedSkills?: unknown }).managedSkills),
-        subagentsDir: agent.subagentsDir || agentConfig.subagentsDir,
-        installedSubagents: Array.isArray(agent.installedSubagents) ? agent.installedSubagents : [],
-        managedSubagents: normalizeManagedArtifacts((agent as { managedSubagents?: unknown }).managedSubagents),
-        configFiles: Array.isArray(agent.configFiles) ? agent.configFiles : agentConfig.configFiles,
-        installedConfigFiles: Array.isArray(agent.installedConfigFiles) ? agent.installedConfigFiles : [],
-        managedConfigFiles: normalizeManagedArtifacts((agent as { managedConfigFiles?: unknown }).managedConfigFiles),
-        mcp: normalizeMcp(agent.mcp),
+        skillsDir,
+        installedSkills: Array.isArray(legacyAgent.installedSkills) ? legacyAgent.installedSkills : [],
+        managedSkills: normalizeManagedArtifacts(legacyAgent.managedSkills),
+        agentsDir,
+        installedAgentFiles,
+        managedAgentFiles,
+        configFiles: Array.isArray(legacyAgent.configFiles) ? legacyAgent.configFiles : agentConfig?.configFiles,
+        installedConfigFiles: Array.isArray(legacyAgent.installedConfigFiles) ? legacyAgent.installedConfigFiles : [],
+        managedConfigFiles: normalizeManagedArtifacts(legacyAgent.managedConfigFiles),
+        mcp: normalizeMcp(legacyAgent.mcp),
       };
     });
 

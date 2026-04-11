@@ -33,7 +33,7 @@ AI Factory works with any AI coding agent. During `ai-factory init`, you choose 
 | Qwen Code | `.qwen/` | `.qwen/skills/` |
 | Universal / Other | `.agents/` | `.agents/skills/` |
 
-When Claude Code is selected, AI Factory also installs bundled Claude subagents into `.claude/agents/` and tracks them in `.ai-factory.json`. When Codex CLI is selected, AI Factory installs bundled Codex native agent TOML files into `.codex/agents/` and a managed project config at `.codex/config.toml`. Both flows are documented in [Subagents](subagents.md).
+When Claude Code is selected, AI Factory installs bundled Claude agent files into `.claude/agents/` and tracks them in `.ai-factory.json` with the universal `agentsDir`, `installedAgentFiles`, and `managedAgentFiles` fields. When Codex CLI is selected, AI Factory also installs bundled Codex native agent TOML files into `.codex/agents/` plus a managed `.codex/config.toml`. Extensions can additionally provide agent files for Codex or extension-defined runtimes. These flows are documented in [Subagents](subagents.md).
 
 MCP server configuration is supported for Claude Code, Cursor, GitHub Copilot, Roo Code, Kilo Code, OpenCode, and Qwen Code. Other agents get skills installed with correct paths but without MCP auto-configuration.
 
@@ -103,8 +103,8 @@ For v1 -> v2 migration, run `ai-factory upgrade` to rename old skills to the new
 `ai-factory update` now:
 - Checks for extension updates from their sources (npm, GitHub, etc.) before updating base skills
 - Prints per-agent status buckets for base skills (`changed`, `unchanged`, `skipped`, `removed`)
-- For Claude Code, refreshes managed `.claude/agents/` subagents and prints a separate `Subagents` status block
-- For Codex CLI, refreshes managed `.codex/agents/` agents and `.codex/config.toml`, printing separate `Subagents` and `Config files` status blocks
+- For runtimes with managed agent files, refreshes bundled package-managed agent files and prints a separate `Agent files` status block
+- For Codex CLI, also refreshes managed `.codex/config.toml` and prints a separate `Config files` status block
 - Skills newly available in the package but not previously installed are shown as `skipped` (not auto-installed)
 
 ## Next Steps

@@ -2,13 +2,13 @@
 
 # Subagents
 
-> AI Factory ships bundled runtime-native agent assets for **Claude Code** and **Codex CLI**. `ai-factory init` installs Claude markdown subagents into `.claude/agents/`, and installs Codex TOML agents into `.codex/agents/` plus a managed `.codex/config.toml`. `ai-factory update` refreshes those managed files without touching user-created custom agents.
+> AI Factory ships bundled runtime-native agent assets for **Claude Code** and **Codex CLI**. `ai-factory init` installs Claude markdown agents into `.claude/agents/`, and installs Codex TOML agents into `.codex/agents/` plus a managed `.codex/config.toml`. `ai-factory update` refreshes those managed files without touching user-created custom agents. Extensions may additionally provide agent files for Codex or extension-defined runtimes through the extension manifest.
 
 ## Migration Note
 
-If you have an existing AI Factory project that was initialized before subagent support was added, running `ai-factory update` will automatically install all bundled subagents into the runtime-specific target directory (`.claude/agents/` for Claude, `.codex/agents/` for Codex). This is intentional migration behavior — `loadConfig()` infers `subagentsDir` from the agent type when it is missing from older configs.
+If you have an existing AI Factory project that was initialized before agent-file support was added, running `ai-factory update` will automatically install bundled package agent files into the runtime-specific target directory (`.claude/agents/` for Claude, `.codex/agents/` for Codex). `loadConfig()` still reads legacy Claude-only `subagentsDir`, `installedSubagents`, and `managedSubagents`, but persists the universal `agentsDir`, `installedAgentFiles`, and `managedAgentFiles` fields on the next save.
 
-If you already have custom agents in `.claude/agents/` or `.codex/agents/`, they will not be touched — AI Factory only manages files listed in `installedSubagents`, `managedSubagents`, `installedConfigFiles`, and `managedConfigFiles` in `.ai-factory.json`.
+If you already have custom agents in `.claude/agents/` or `.codex/agents/`, they will not be touched — AI Factory only manages files listed in `installedAgentFiles`, `managedAgentFiles`, `installedConfigFiles`, and `managedConfigFiles` in `.ai-factory.json`.
 
 ## Why This Exists
 
