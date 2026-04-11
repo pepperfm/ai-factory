@@ -14,7 +14,6 @@ import {
   type ResolvedExtension,
 } from './extensions.js';
 import {
-  AgentFileInstallError,
   installSkills,
   getAvailableSkills,
   getAvailableSubagents,
@@ -133,9 +132,6 @@ export async function installExtensionAgentFilesForAllAgents(
       );
       results.set(agent.id, installed);
     } catch (error) {
-      if (error instanceof AgentFileInstallError) {
-        results.set(agent.id, error.installedTargets);
-      }
       throw error;
     }
   }
