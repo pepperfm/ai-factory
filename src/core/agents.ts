@@ -309,7 +309,3 @@ export function getAgentChoices(): { name: string; value: string }[] {
 export function getAvailableAgentIds(): string[] {
   return getRegistryEntries().map(agent => agent.id);
 }
-
-export function isBuiltInAgent(id: string): boolean {
-  return id in BUILTIN_AGENT_REGISTRY;
-}
