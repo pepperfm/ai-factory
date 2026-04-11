@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import path from 'path';
 import { loadConfig, saveConfig } from '../../core/config.js';
+import { hydrateProjectAgentRegistry } from '../../core/agents.js';
 import {
   resolveExtension,
   removeExtensionFiles,
@@ -11,12 +12,34 @@ import { removeExtensionMcpServers } from '../../core/mcp.js';
 import {
   removeSkillsForAllAgents,
   collectReplacedSkills,
+  removeExtensionAgentFilesForAllAgents,
   restoreBaseSkills,
   stripInjectionsForAllAgents,
   removeCustomSkillsForAllAgents,
   commitResolvedExtension,
   refreshExtensions,
 } from '../../core/extension-ops.js';
+
+function getManifestRuntimeIds(manifest: { agents?: Array<{ id: string }> } | null): string[] {
+  return manifest?.agents?.map(agent => agent.id) ?? [];
+}
+
+function assertNoConfiguredRuntimeOrphans(
+  configuredAgents: Array<{ id: string }>,
+  runtimeIds: string[],
+  extensionName: string,
+): void {
+  const configured = configuredAgents
+    .filter(agent => runtimeIds.includes(agent.id))
+    .map(agent => agent.id);
+
+  if (configured.length > 0) {
+    throw new Error(
+      `Cannot remove extension "${extensionName}" because it would orphan configured runtime(s): ${configured.join(', ')}. ` +
+      `Re-run "ai-factory init" without them first.`,
+    );
+  }
+}
 
 export async function extensionAddCommand(source: string): Promise<void> {
   const projectDir = process.cwd();
@@ -29,6 +52,10 @@ export async function extensionAddCommand(source: string): Promise<void> {
     console.log(chalk.dim('Run "ai-factory init" to set up your project first.'));
     process.exit(1);
   }
+
+  await hydrateProjectAgentRegistry(projectDir, {
+    extensionNames: config.extensions?.map(extension => extension.name) ?? [],
+  });
 
   console.log(chalk.dim(`Installing from: ${source}\n`));
 
@@ -81,6 +108,10 @@ export async function extensionRemoveCommand(name: string): Promise<void> {
     process.exit(1);
   }
 
+  await hydrateProjectAgentRegistry(projectDir, {
+    extensionNames: config.extensions?.map(extension => extension.name) ?? [],
+  });
+
   const extensions = config.extensions ?? [];
   const index = extensions.findIndex(e => e.name === name);
 
@@ -92,6 +123,16 @@ export async function extensionRemoveCommand(name: string): Promise<void> {
   try {
     const extensionDir = path.join(getExtensionsDir(projectDir), name);
     const manifest = await loadExtensionManifest(extensionDir);
+    assertNoConfiguredRuntimeOrphans(config.agents, getManifestRuntimeIds(manifest), name);
+
+    if (manifest?.agentFiles?.length) {
+      const removedAgentFiles = await removeExtensionAgentFilesForAllAgents(projectDir, config.agents, manifest);
+      for (const [agentId, files] of removedAgentFiles) {
+        if (files.length > 0) {
+          console.log(chalk.green(`✓ Agent files removed for ${agentId}: ${files.join(', ')}`));
+        }
+      }
+    }
 
     // Strip injections before removing files
     await stripInjectionsForAllAgents(projectDir, config.agents, name, manifest);
@@ -157,6 +198,10 @@ export async function extensionListCommand(): Promise<void> {
     process.exit(1);
   }
 
+  await hydrateProjectAgentRegistry(projectDir, {
+    extensionNames: config.extensions?.map(extension => extension.name) ?? [],
+  });
+
   const extensions = config.extensions ?? [];
 
   if (extensions.length === 0) {
@@ -206,6 +251,10 @@ export async function extensionUpdateCommand(name?: string, options?: { force?: 
     console.log(chalk.dim('Run "ai-factory init" to set up your project first.'));
     process.exit(1);
   }
+
+  await hydrateProjectAgentRegistry(projectDir, {
+    extensionNames: config.extensions?.map(extension => extension.name) ?? [],
+  });
 
   const extensions = config.extensions ?? [];
 
@@ -278,4 +327,3 @@ export async function extensionUpdateCommand(name?: string, options?: { force?: 
     process.exit(1);
   }
 }
-
