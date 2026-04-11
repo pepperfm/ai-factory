@@ -2,13 +2,13 @@
 
 # Subagents
 
-> AI Factory ships bundled runtime-native agent assets for **Claude Code** and **Codex CLI**. `ai-factory init` installs Claude markdown agents into `.claude/agents/`, and installs Codex TOML agents into `.codex/agents/` plus a managed `.codex/config.toml`. `ai-factory update` refreshes those managed files without touching user-created custom agents. Extensions may additionally provide agent files for Codex or extension-defined runtimes through the extension manifest.
+> AI Factory ships bundled runtime-native agent assets for **Claude Code** and **Codex CLI**. `ai-factory init` installs Claude markdown agents into `.claude/agents/`, and installs Codex TOML agents into `.codex/agents/` plus a managed `.codex/config.toml`. `ai-factory update` refreshes those managed files without touching user-created custom agents. Extensions may additionally provide agent files for Codex or extension-defined runtimes through the extension manifest. This is baseline native-agent support for Codex, not full parity with the broader Claude bundle.
 
 ## Migration Note
 
 If you have an existing AI Factory project that was initialized before agent-file support was added, running `ai-factory update` will automatically install bundled package agent files into the runtime-specific target directory (`.claude/agents/` for Claude, `.codex/agents/` for Codex). `loadConfig()` still reads legacy Claude-only `subagentsDir`, `installedSubagents`, and `managedSubagents`, but persists the universal `agentsDir`, `installedAgentFiles`, and `managedAgentFiles` fields on the next save.
 
-If you already have custom agents in `.claude/agents/` or `.codex/agents/`, they will not be touched — AI Factory only manages files listed in `installedAgentFiles`, `managedAgentFiles`, `installedConfigFiles`, and `managedConfigFiles` in `.ai-factory.json`.
+If you already have custom agents in `.claude/agents/` or `.codex/agents/`, they will not be touched — AI Factory only manages files listed in `installedAgentFiles`, `managedAgentFiles`, `installedConfigFiles`, and `managedConfigFiles` in `.ai-factory.json`. For Codex, that managed set includes `.codex/config.toml`; if drift is detected in that file, `ai-factory update` may overwrite it to restore the package-managed defaults.
 
 ## Why This Exists
 
@@ -33,7 +33,8 @@ The intended benefit is:
 ## Scope
 
 Current scope is intentionally small:
-- one planning subagent, one planning coordinator, one implementation coordinator with its worker, five execution sidecars, and the loop-related subagents are defined
+- Claude ships the broader bundle, including planning, implementation, review, and the `loop-*` family
+- Codex currently ships the planning / implementation / review baseline only: one planning subagent, one planning coordinator, one implementation coordinator with its worker, and five execution sidecars
 - source files live in the package `subagents/` directory (`subagents/*.md` for Claude, `subagents/codex/agents/*.toml` for Codex, and `subagents/codex/config.toml` for the Codex project config)
 - managed copies are installed into the runtime-specific project directory (`.claude/agents/` or `.codex/agents/`)
 - all of them are project-local, not user-global
@@ -57,7 +58,7 @@ Codex receives the same narrow planning/implementation/review contract as Claude
 | `review-sidecar` | read-only correctness review | `gpt-5.4-mini` |
 | `security-sidecar` | read-only security review | `gpt-5.4-mini` |
 
-Codex also receives a managed `.codex/config.toml` with conservative `[agents]` defaults so native agent orchestration works in freshly initialized projects.
+Codex also receives a managed `.codex/config.toml` with conservative `[agents]` defaults so native agent orchestration works in freshly initialized projects. That file is intentionally package-managed by AI Factory and is tracked through `installedConfigFiles` / `managedConfigFiles` in `.ai-factory.json`; `ai-factory update` may overwrite local drift in `.codex/config.toml` to restore the managed defaults.
 
 When those agents are used from `aif-handoff`, the bundle is also **handoff-aware**:
 - top-level coordinators understand explicit `HANDOFF_MODE`, `HANDOFF_TASK_ID`, and `HANDOFF_SKIP_REVIEW` context passed by the parent runtime
