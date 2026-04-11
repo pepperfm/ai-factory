@@ -64,7 +64,7 @@ All other built-in skills treat `config.yaml` as read-only input.
 | `paths.evolution` | `.ai-factory/evolution/` | `/aif-loop` | Reflex loop state root |
 | `paths.specs` | `.ai-factory/specs/` | `/aif-plan`, `/aif-verify` | Specs / archived plan support |
 | `paths.rules` | `.ai-factory/rules/` | `/aif-plan`, `/aif-explore`, `/aif-roadmap`, `/aif-implement`, `/aif-verify`, `/aif-review`, `/aif-commit`, `/aif-fix`, `/aif-evolve`, `/aif-rules` | Area-rules directory and relative rule resolution base |
-| `paths.qa` | `.ai-factory/qa/` | `/aif-qa` | QA artifacts root; branch slug is appended as subdirectory (`<paths.qa>/<branch>/`) |
+| `paths.qa` | `.ai-factory/qa/` | `/aif-qa` | QA artifacts root; branch slug is appended as subdirectory (`<paths.qa>/<branch-slug>/`) |
 
 ### `workflow`
 

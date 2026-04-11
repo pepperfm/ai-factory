@@ -290,7 +290,7 @@ your-project/
 │   │       ├── history.jsonl
 │   │       └── artifact.md
 │   └── qa/                    # QA artifacts (from /aif-qa)
-│       └── <branch-name>/
+│       └── <branch-slug>/
 │           ├── change-summary.md
 │           ├── test-plan.md
 │           └── test-cases.md

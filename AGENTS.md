@@ -7,7 +7,7 @@
 **AI Factory** (v2) is an npm package + skill system that automates AI agent context setup for projects. It provides:
 
 1. **CLI tool** (`ai-factory init/update/upgrade`) — installs skills and configures MCP
-2. **Built-in skills** (22 skills, all `aif-*` prefixed) — workflow commands for spec-driven development
+2. **Built-in skills** (24 skills, all `aif-*` prefixed) — workflow commands for spec-driven development
 3. **Spec-driven workflow** — structured approach: plan → implement → commit
 4. **Multi-agent support** — 15 agents (Claude Code, Cursor, Windsurf, Roo Code, Kilo Code, Antigravity, OpenCode, Warp,
    Zencoder, Codex CLI, GitHub Copilot, Gemini CLI, Junie, Qwen Code, Universal)
@@ -99,7 +99,7 @@ Artifact writers are command-scoped to prevent ownership conflicts:
 | `.ai-factory/skill-context/*`                                                                 | `/aif-evolve`          | skill-context overrides for built-in skills                                                      |
 | `paths.evolutions/*.md` and `paths.evolutions/patch-cursor.json`                              | `/aif-evolve`          | evolution logs and incremental patch cursor                                                      |
 | `.ai-factory/evolution/*` artifacts                                                           | `/aif-loop`            | loop state ownership                                                                             |
-| `paths.qa` (default: `.ai-factory/qa/<branch>/`)                                              | `/aif-qa`              | change-summary, test-plan, test-cases artifacts; branch slug used as subdirectory                |
+| `paths.qa` (default: `.ai-factory/qa/<branch-slug>/`)                                         | `/aif-qa`              | change-summary, test-plan, test-cases artifacts; branch slug used as subdirectory                |
 
 Quality commands (`/aif-commit`, `/aif-review`, `/aif-verify`) are read-only for context artifacts by default.
 

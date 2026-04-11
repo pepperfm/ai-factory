@@ -325,7 +325,7 @@ Reads patches incrementally using an evolve cursor, analyzes project patterns, a
 
 ---
 
-For full details on all skills including utility commands (`/aif-docs`, `/aif-dockerize`, `/aif-build-automation`, `/aif-ci`, `/aif-commit`, `/aif-skill-generator`, `/aif-reference`, `/aif-security-checklist`), see [Core Skills](skills.md).
+For full details on all skills including utility commands (`/aif-docs`, `/aif-dockerize`, `/aif-build-automation`, `/aif-ci`, `/aif-commit`, `/aif-skill-generator`, `/aif-reference`, `/aif-security-checklist`, `/aif-qa`), see [Core Skills](skills.md).
 
 ## Why Spec-Driven?
 

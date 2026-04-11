@@ -8,14 +8,19 @@
 
 Use the `resolved_branch` and `artifact_dir` resolved in SKILL.md Step 0.2.
 
+**Resolve the comparison base:**
+
+> Use the `git.base_branch` value from config (default: `main`).
+> If `resolved_branch` IS the base branch, set `effective_base = <resolved_branch>~1`.
+> Otherwise, set `effective_base = <base_branch>`.
+>
+> Use `effective_base` for all git commands below. This ensures the log and diff are always consistent and anchored to `resolved_branch`, not to the current checkout.
+
 **Get commit list:**
 
 ```bash
-git log <base_branch>..<resolved_branch> --oneline
+git log <effective_base>..<resolved_branch> --oneline
 ```
-
-> Use the `git.base_branch` value from config (default: `main`).
-> If `resolved_branch` IS the base branch, use `HEAD~1` instead.
 
 **Check commit count — if more than 20, ask before proceeding:**
 
@@ -36,8 +41,8 @@ Based on choice:
 **Get changed files and diff:**
 
 ```bash
-git diff <base_branch>...<resolved_branch> --name-status
-git diff <base_branch>...<resolved_branch>
+git diff <effective_base>...<resolved_branch> --name-status
+git diff <effective_base>...<resolved_branch>
 ```
 
 **Check diff size — if the diff exceeds ~1000 lines, warn before proceeding:**

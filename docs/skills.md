@@ -499,7 +499,7 @@ Three-stage QA workflow for manual testing of a feature or fix:
 /aif-qa --all feat/x            # Full pipeline for a specific branch
 ```
 
-Each stage builds on the previous one and saves its artifact to `paths.qa/<branch>/`:
+Each stage builds on the previous one and saves its artifact to `paths.qa/<branch-slug>/`:
 
 | Stage            | Artifact            | What it produces                                    |
 |------------------|---------------------|-----------------------------------------------------|
