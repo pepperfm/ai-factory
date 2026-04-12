@@ -355,6 +355,8 @@ fi
 assert_contains "$TMPDIR/init-ext-remove-blocked.log" "orphan configured runtime" "remove must explain orphan runtime block"
 
 (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif > "$TMPDIR/init-ext-deselect.log" 2>&1)
+assert_contains "$TMPDIR/init-ext-deselect.log" "Removed: test-runtime" "deselect must report dynamic runtime removal"
+assert_not_exists "$EXT_PROJECT_DIR/.test-runtime/agents/test-agent.toml" "deselect must remove extension-defined runtime agent files"
 (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension remove aif-ext-runtime-agent-files > "$TMPDIR/init-ext-remove.log" 2>&1)
 assert_not_exists "$EXT_PROJECT_DIR/.claude/agents/test-sidecar.md" "extension claude agent file must be removed"
 assert_not_exists "$EXT_PROJECT_DIR/.codex/agents/test-helper.toml" "extension codex agent file must be removed"

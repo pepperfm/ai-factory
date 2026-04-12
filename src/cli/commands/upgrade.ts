@@ -13,7 +13,6 @@ import {
   partitionSkills,
 } from '../../core/installer.js';
 import { getAgentConfig, hydrateProjectAgentRegistry } from '../../core/agents.js';
-import { getAgentConfig, hydrateProjectAgentRegistry } from '../../core/agents.js';
 import { fileExists, removeDirectory, removeFile } from '../../utils/fs.js';
 
 // Old v1 skill directory names that were renamed to aif-* in v2

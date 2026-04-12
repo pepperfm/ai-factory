@@ -242,7 +242,7 @@ CLAUDE_FIRST_OUTPUT="$TMPDIR/update-claude-first.log"
 CLAUDE_SECOND_OUTPUT="$TMPDIR/update-claude-second.log"
 
 (cd "$CLAUDE_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CLAUDE_FIRST_OUTPUT" 2>&1)
-assert_contains "$CLAUDE_FIRST_OUTPUT" "\[claude\] Subagents:" "claude subagents section must be printed"
+assert_contains "$CLAUDE_FIRST_OUTPUT" "\[claude\] Agent files:" "claude agent files section must be printed"
 assert_contains "$CLAUDE_FIRST_OUTPUT" "loop-orchestrator\\.md \(new in package\)" "new bundled subagent must be installed"
 assert_exists "$CLAUDE_PROJECT_DIR/.claude/agents/best-practices-sidecar.md" "best-practices sidecar must be installed"
 assert_exists "$CLAUDE_PROJECT_DIR/.claude/agents/commit-preparer.md" "commit preparer must be installed"
@@ -297,7 +297,7 @@ CODEX_FIRST_OUTPUT="$TMPDIR/update-codex-first.log"
 CODEX_SECOND_OUTPUT="$TMPDIR/update-codex-second.log"
 
 (cd "$CODEX_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CODEX_FIRST_OUTPUT" 2>&1)
-assert_contains "$CODEX_FIRST_OUTPUT" "\[codex\] Subagents:" "codex subagents section must be printed"
+assert_contains "$CODEX_FIRST_OUTPUT" "\[codex\] Agent files:" "codex agent files section must be printed"
 assert_contains "$CODEX_FIRST_OUTPUT" "\[codex\] Config files:" "codex config files section must be printed"
 assert_contains "$CODEX_FIRST_OUTPUT" "plan-coordinator\\.toml \(new in package\)" "new Codex agent must be installed"
 assert_contains "$CODEX_FIRST_OUTPUT" "config\\.toml \(new in package\)" "new Codex config file must be installed"
@@ -353,7 +353,7 @@ echo "" >> "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml"
 echo "# drift" >> "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml"
 
 (cd "$CODEX_AGENT_DRIFT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" 2>&1)
-assert_contains "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" "Local modifications detected in subagent" "Codex agent drift warning must be printed"
+assert_contains "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" "Local modifications detected in agent file" "Codex agent drift warning must be printed"
 assert_contains "$CODEX_AGENT_DRIFT_SECOND_OUTPUT" "plan-coordinator\\.toml \(local drift\)" "Codex agent drift must be repaired on update"
 assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "name = \"plan-coordinator\"" "Codex agent TOML content must be restored"
 assert_contains "$CODEX_AGENT_DRIFT_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "HANDOFF_MODE" "Codex plan coordinator handoff guidance must survive update repair"
@@ -387,8 +387,8 @@ EOF
 
 ROUNDTRIP_OUTPUT="$TMPDIR/update-roundtrip.log"
 (cd "$ROUNDTRIP_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$ROUNDTRIP_OUTPUT" 2>&1)
-assert_contains "$ROUNDTRIP_OUTPUT" "\[claude\] Subagents:" "Round-trip update must still report Claude subagents"
-assert_contains "$ROUNDTRIP_OUTPUT" "\[codex\] Subagents:" "Round-trip update must still report Codex subagents"
+assert_contains "$ROUNDTRIP_OUTPUT" "\[claude\] Agent files:" "Round-trip update must still report Claude agent files"
+assert_contains "$ROUNDTRIP_OUTPUT" "\[codex\] Agent files:" "Round-trip update must still report Codex agent files"
 assert_contains "$ROUNDTRIP_OUTPUT" "\[codex\] Config files:" "Round-trip update must still report Codex config files"
 assert_exists "$ROUNDTRIP_PROJECT_DIR/.claude/agents/plan-coordinator.md" "Round-trip project must preserve Claude agents"
 assert_exists "$ROUNDTRIP_PROJECT_DIR/.codex/agents/plan-coordinator.toml" "Round-trip project must preserve Codex agents"
@@ -468,7 +468,7 @@ EOF
 
 LEGACY_CLAUDE_OUTPUT="$TMPDIR/update-legacy-claude.log"
 (cd "$LEGACY_CLAUDE_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$LEGACY_CLAUDE_OUTPUT" 2>&1)
-assert_contains "$LEGACY_CLAUDE_OUTPUT" "\[claude\] Subagents:" "legacy claude config must still update bundled agent files"
+assert_contains "$LEGACY_CLAUDE_OUTPUT" "\[claude\] Agent files:" "legacy claude config must still update bundled agent files"
 node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if('subagentsDir' in a || 'installedSubagents' in a || 'managedSubagents' in a)process.exit(1);if(a.agentsDir!=='.claude/agents')process.exit(1);if(!Array.isArray(a.installedAgentFiles)||!a.installedAgentFiles.includes('plan-polisher.md'))process.exit(1);if(!a.managedAgentFiles||!a.managedAgentFiles['plan-polisher.md'])process.exit(1);" "$LEGACY_CLAUDE_PROJECT_DIR/.ai-factory.json"
 
 echo "legacy claude migration smoke tests passed"

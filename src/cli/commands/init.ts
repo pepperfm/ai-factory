@@ -9,7 +9,7 @@ import {
   installSkills,
   installSubagents,
   resolveManagedConfigFilePaths,
-  resolveManagedSubagentPaths,
+  resolveInstalledAgentFileTargetPath,
   getAvailableSkills,
 } from '../../core/installer.js';
 import { saveConfig, configExists, loadConfig, getCurrentVersion, type AgentInstallation } from '../../core/config.js';
@@ -23,7 +23,7 @@ import {
   collectReplacedSkills,
   installExtensionAgentFilesForAllAgents,
 } from '../../core/extension-ops.js';
-import { loadAllExtensions } from '../../core/extensions.js';
+import { loadAllExtensions, type ExtensionManifest } from '../../core/extensions.js';
 
 export interface InitOptions {
   agents?: string;
@@ -92,7 +92,11 @@ function buildAnswersFromFlags(options: InitOptions, availableSkills: string[]):
   return { selectedSkills, agents };
 }
 
-async function removeAgentSetup(projectDir: string, agent: AgentInstallation): Promise<void> {
+async function removeAgentSetup(
+  projectDir: string,
+  agent: AgentInstallation,
+  installedExtensionManifests: ExtensionManifest[] = [],
+): Promise<void> {
   const agentConfig = getAgentConfig(agent.id);
   await removeDirectory(path.join(projectDir, agent.skillsDir));
 
@@ -100,9 +104,17 @@ async function removeAgentSetup(projectDir: string, agent: AgentInstallation): P
   // The directory may contain user-created custom agents unrelated to AI Factory.
   const agentsDir = agent.agentsDir ?? agentConfig.agentsDir;
   if (agentsDir) {
-    const managedFiles = agent.installedAgentFiles ?? [];
+    const managedFiles = new Set(agent.installedAgentFiles ?? []);
+    for (const manifest of installedExtensionManifests) {
+      for (const agentFile of manifest.agentFiles ?? []) {
+        if (agentFile.runtime === agent.id) {
+          managedFiles.add(agentFile.target);
+        }
+      }
+    }
+
     for (const relPath of managedFiles) {
-      const { targetFile } = resolveManagedSubagentPaths(projectDir, agent.id, agentsDir, relPath);
+      const targetFile = resolveInstalledAgentFileTargetPath(projectDir, agentsDir, relPath);
       await removeFile(targetFile);
     }
   }
@@ -146,11 +158,17 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
 
     const selectedAgentIds = new Set(answers.agents.map(agent => agent.id));
     const removedAgents = (existingConfig?.agents ?? []).filter(agent => !selectedAgentIds.has(agent.id));
+    const existingExtensions = existingConfig?.extensions ?? [];
 
     if (removedAgents.length > 0) {
       console.log(chalk.dim('\nRemoving deselected agent setups...\n'));
+      const installedExtensions = existingExtensions.length > 0
+        ? await loadAllExtensions(projectDir, existingExtensions.map(extension => extension.name))
+        : [];
+      const installedExtensionManifests = installedExtensions.map(({ manifest }) => manifest);
+
       for (const removedAgent of removedAgents) {
-        await removeAgentSetup(projectDir, removedAgent);
+        await removeAgentSetup(projectDir, removedAgent, installedExtensionManifests);
         console.log(chalk.yellow(`  Removed: ${removedAgent.id}`));
       }
     }
@@ -217,8 +235,6 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
         },
       });
     }
-
-    const existingExtensions = existingConfig?.extensions ?? [];
 
     // Re-apply extension injections after skill installation
     if (existingExtensions.length > 0) {

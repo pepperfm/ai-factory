@@ -21,7 +21,6 @@ import {
 import type { AgentInstallation, ManagedArtifactState } from './config.js';
 import { AGENT_IDS, getAgentConfig } from './agents.js';
 import type { ExtensionAgentFile } from './extensions.js';
-import { AGENT_IDS, getAgentConfig } from './agents.js';
 import { processSkillTemplates, buildTemplateVars, processTemplate } from './template.js';
 import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from './transformer.js';
 
@@ -246,6 +245,18 @@ function resolveAgentFilePaths(
     sourceRelPath,
     targetRelPath,
   };
+}
+
+export function resolveInstalledAgentFileTargetPath(
+  projectDir: string,
+  agentsDir: string,
+  relPath: string,
+): string {
+  assertSafeManagedRelativePath(relPath);
+  const targetRoot = path.join(projectDir, agentsDir);
+  const targetFile = path.join(targetRoot, relPath);
+  ensureTargetWithinRoot(targetRoot, targetFile);
+  return targetFile;
 }
 
 export function resolveManagedConfigFilePaths(projectDir: string, agentId: string, relPath: string): ResolvedConfigFilePaths {
@@ -670,9 +681,7 @@ async function removeSubagentsByName(
 
   for (const relPath of subagentNames) {
     try {
-      const targetRoot = path.join(projectDir, agentInstallation.agentsDir);
-      const targetFile = path.join(targetRoot, relPath);
-      ensureTargetWithinRoot(targetRoot, targetFile);
+      const targetFile = resolveInstalledAgentFileTargetPath(projectDir, agentInstallation.agentsDir, relPath);
       await removeFile(targetFile);
       removed.push(relPath);
     } catch {
@@ -1105,6 +1114,8 @@ export async function updateConfigFiles(
     installedConfigFiles: syncedFiles,
     entries,
   };
+}
+
 export class AgentFileInstallError extends Error {
   installedTargets: string[];
 
