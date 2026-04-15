@@ -81,7 +81,17 @@ Otherwise → run: git branch --show-current
 
 Store both values for use in all reference files:
 - `resolved_branch` — the branch being analyzed (used to locate/save artifacts)
-- `artifact_dir` — `<resolved paths.qa>/<branch-slug>` where `branch-slug` is `resolved_branch` with every `/` (and any other non-alphanumeric character except `-`) replaced by `-`; e.g. `feature/my-branch` → `feature-my-branch`
+- `artifact_dir` — `<resolved paths.qa>/<branch-slug>`, where `branch-slug` is an **injective** encoding of `resolved_branch`. Compute it in three steps:
+  1. **Safe slug.** Take `resolved_branch` and replace every character that is not in `[A-Za-z0-9._-]` with `-`, collapse runs of consecutive `-` into a single `-`, and trim leading/trailing `-`. If the result is empty, use `branch`. Optionally truncate to 40 characters. Call this `safe_slug`.
+  2. **Hash suffix.** Run `git hash-object --stdin <<< "<resolved_branch>"` and take the **first 8 hex characters** of the output. Call this `hash8`. The hash is derived from the **original, unnormalized** branch name — this is what guarantees uniqueness.
+  3. **Combine:** `branch-slug = "<safe_slug>-<hash8>"`.
+
+  **Why the hash:** a readable slug alone is lossy — `feature/foo` and `feature-foo` normalize to the same `safe_slug` and would overwrite each other's artifacts. Appending a hash of the full original name makes the mapping injective: different branches always resolve to different directories.
+
+  **Examples:**
+  - `feature/foo` → `safe_slug=feature-foo`, `hash8=a72ccce7` → `feature-foo-a72ccce7`
+  - `feature-foo` → `safe_slug=feature-foo`, `hash8=6f80dfc6` → `feature-foo-6f80dfc6`
+  - `main` → `safe_slug=main`, `hash8=<computed>` → `main-<hash8>`
 - `all_mode` — whether to skip inter-stage prompts
 
 **If no mode was provided and `all_mode = false` — ask the user:**

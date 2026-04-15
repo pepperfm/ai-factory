@@ -74,9 +74,9 @@ artifacts, but the paths below remain the default layout:
 - `.ai-factory/skill-context/<skill>/SKILL.md` — project-specific overrides for skills (from /aif-evolve)
 - `.ai-factory/evolutions/*.md` — evolution logs (from /aif-evolve)
 - `.ai-factory/evolutions/patch-cursor.json` — incremental evolve cursor (latest processed patch)
-- `.ai-factory/qa/<branch>/change-summary.md` — QA change summary (from /aif-qa)
-- `.ai-factory/qa/<branch>/test-plan.md` — QA test plan (from /aif-qa)
-- `.ai-factory/qa/<branch>/test-cases.md` — QA test cases (from /aif-qa)
+- `.ai-factory/qa/<branch-slug>/change-summary.md` — QA change summary (from /aif-qa)
+- `.ai-factory/qa/<branch-slug>/test-plan.md` — QA test plan (from /aif-qa)
+- `.ai-factory/qa/<branch-slug>/test-cases.md` — QA test cases (from /aif-qa)
 - `.ai-factory/evolution/current.json` — active loop pointer (from /aif-loop)
 - `.ai-factory/evolution/<alias>/run.json` — current loop state
 - `.ai-factory/evolution/<alias>/history.jsonl` — loop event history (append-only)
@@ -258,7 +258,7 @@ Offers to delete PLAN.md when done (keeps feature-*.md)
 Reads .ai-factory/DESCRIPTION.md + ARCHITECTURE.md + config.yaml for context
     ↓
 change-summary → collects git diff, checks commit/diff size limits, explores key files in parallel
-               → saves .ai-factory/qa/<branch>/change-summary.md
+               → saves .ai-factory/qa/<branch-slug>/change-summary.md
     ↓
 test-plan      → reads change-summary → determines scope and test types → saves test-plan.md
     ↓
