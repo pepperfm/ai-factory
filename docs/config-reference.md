@@ -51,7 +51,7 @@ During setup, `/aif` resolves `language.ui` and `language.artifacts` immediately
 
 | Key | Default | Read by skills | Notes |
 |-----|---------|----------------|-------|
-| `language.ui` | `en` | `/aif`, `/aif-architecture`, `/aif-plan`, `/aif-explore`, `/aif-roadmap`, `/aif-implement`, `/aif-verify`, `/aif-review`, `/aif-commit`, `/aif-fix`, `/aif-improve`, `/aif-loop`, `/aif-docs`, `/aif-evolve`, `/aif-reference`, `/aif-rules`, `/aif-security-checklist` | UI language for prompts, questions, and summaries; `/aif` resolves it before downstream setup questions |
+| `language.ui` | `en` | `/aif`, `/aif-architecture`, `/aif-plan`, `/aif-explore`, `/aif-roadmap`, `/aif-implement`, `/aif-verify`, `/aif-review`, `/aif-commit`, `/aif-fix`, `/aif-improve`, `/aif-loop`, `/aif-docs`, `/aif-evolve`, `/aif-reference`, `/aif-rules`, `/aif-security-checklist`, `/aif-qa` | UI language for prompts, questions, and summaries; `/aif` resolves it before downstream setup questions |
 | `language.artifacts` | `en` | `/aif`, `/aif-architecture`, `/aif-roadmap`, `/aif-implement`, `/aif-loop`, `/aif-docs`, `/aif-evolve` | Language for generated artifacts; `/aif` locks it before the first setup artifact so DESCRIPTION/rules base/AGENTS/ARCHITECTURE stay aligned in one run |
 | `language.technical_terms` | `keep` | No dedicated built-in reader yet | Present in schema and template; `/aif` preserves an existing value when present and otherwise writes the default `keep`, while the wider translation policy stays reserved for future use |
 
@@ -75,6 +75,7 @@ During setup, `/aif` resolves `language.ui` and `language.artifacts` immediately
 | `paths.evolution` | `.ai-factory/evolution/` | `/aif-loop` | Reflex loop state root |
 | `paths.specs` | `.ai-factory/specs/` | `/aif-plan`, `/aif-verify` | Specs / archived plan support |
 | `paths.rules` | `.ai-factory/rules/` | `/aif-plan`, `/aif-explore`, `/aif-roadmap`, `/aif-implement`, `/aif-verify`, `/aif-review`, `/aif-commit`, `/aif-fix`, `/aif-evolve`, `/aif-rules` | Area-rules directory and relative rule resolution base |
+| `paths.qa` | `.ai-factory/qa/` | `/aif-qa` | QA artifacts root; branch slug is appended as subdirectory (`<paths.qa>/<branch-slug>/`) |
 
 ### `workflow`
 
@@ -131,6 +132,7 @@ During setup, `/aif` resolves `language.ui` and `language.artifacts` immediately
 | `/aif-evolve` | Yes | No | `paths.description`, `paths.architecture`, `paths.rules_file`, `paths.rules`, `paths.patches`, `paths.evolutions`, `language.ui`, `language.artifacts`, `rules.base`, `rules.<area>` |
 | `/aif-reference` | Yes | No | `paths.references`, `paths.rules_file`, `language.ui` |
 | `/aif-security-checklist` | Yes | No | `paths.security`, `language.ui` |
+| `/aif-qa` | Yes | No | `paths.description`, `paths.architecture`, `paths.qa`, `language.ui`, `git.base_branch` |
 
 ### Config-Agnostic Built-ins
 
