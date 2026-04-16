@@ -18,12 +18,12 @@ FAILED=0
 
 pass() {
     PASSED=$((PASSED + 1))
-    echo -e "  ${GREEN}✓${NC} $1"
+    echo -e "  ${GREEN}OK${NC} $1"
 }
 
 fail() {
     FAILED=$((FAILED + 1))
-    echo -e "  ${RED}✗${NC} $1"
+    echo -e "  ${RED}FAIL${NC} $1"
 }
 
 # Reference implementation of the branch-slug algorithm documented in
@@ -42,22 +42,22 @@ aif_qa_slug() {
     printf '%s-%s\n' "$safe_slug" "$hash8"
 }
 
-# ─────────────────────────────────────────────
-# Part 1: branch-slug algorithm (branch-key uniqueness)
-# ─────────────────────────────────────────────
+# ---------------------------------------------
+# Part 1: branch-slug algorithm behavior
+# ---------------------------------------------
 echo -e "\n${BOLD}=== /aif-qa branch-slug algorithm ===${NC}\n"
 
-# Test 1: classic collision case that motivated the P1 fix in PR #68
+# Test 1: classic collision case that motivated the follow-up
 s1=$(aif_qa_slug "feature/foo")
 s2=$(aif_qa_slug "feature-foo")
 if [[ "$s1" != "$s2" ]]; then
-    pass "feature/foo vs feature-foo are distinct ($s1 ≠ $s2)"
+    pass "feature/foo vs feature-foo are distinct ($s1 != $s2)"
 else
     fail "feature/foo and feature-foo collapsed to $s1"
 fi
 
-# Test 2: multi-way injectivity — 4 branches that all share the same safe_slug
-# 'feat-x', plus two that differ on safe_slug. All 6 must produce unique slugs.
+# Test 2: several branches that normalize toward the same readable slug
+# still resolve to distinct derived slugs once the hash suffix is applied.
 branches=('feat/x' 'feat-x' 'feat x' 'feat--x' 'feat.x' 'feat_x')
 slugs=()
 for b in "${branches[@]}"; do
@@ -65,11 +65,11 @@ for b in "${branches[@]}"; do
 done
 unique_count=$(printf '%s\n' "${slugs[@]}" | sort -u | wc -l | tr -d ' ')
 if [[ "$unique_count" -eq "${#branches[@]}" ]]; then
-    pass "${#branches[@]} colliding branches → ${#branches[@]} unique slugs"
+    pass "${#branches[@]} representative branches -> ${#branches[@]} unique derived slugs"
 else
     fail "expected ${#branches[@]} unique slugs, got $unique_count"
     for i in "${!branches[@]}"; do
-        echo "      '${branches[$i]}' → ${slugs[$i]}"
+        echo "      '${branches[$i]}' -> ${slugs[$i]}"
     done
 fi
 
@@ -97,7 +97,7 @@ else
     fail "slug missing 8-char hex hash suffix: $s"
 fi
 
-# Test 6: deterministic — same input always produces the same slug
+# Test 6: deterministic - same input always produces the same slug
 s1=$(aif_qa_slug "feature/x")
 s2=$(aif_qa_slug "feature/x")
 if [[ "$s1" == "$s2" ]]; then
@@ -106,16 +106,16 @@ else
     fail "non-deterministic slug: $s1 vs $s2"
 fi
 
-# ─────────────────────────────────────────────
-# Part 2: skill contract (explicit-branch flow, --all mode, stage handoff)
-# ─────────────────────────────────────────────
+# ---------------------------------------------
+# Part 2: skill contract
+# ---------------------------------------------
 echo -e "\n${BOLD}=== /aif-qa skill contract ===${NC}\n"
 
-# Contract: SKILL.md documents the injective slug encoding
-if grep -qi 'injective' "$SKILL_DIR/SKILL.md"; then
-    pass "SKILL.md documents injective branch-slug encoding"
+# Contract: SKILL.md documents the deterministic, collision-resistant slug contract
+if grep -qi 'collision-resistant' "$SKILL_DIR/SKILL.md" && grep -qi 'filesystem-safe' "$SKILL_DIR/SKILL.md"; then
+    pass "SKILL.md documents a filesystem-safe, collision-resistant branch slug"
 else
-    fail "SKILL.md must mention 'injective' branch-slug encoding"
+    fail "SKILL.md must describe the branch slug as filesystem-safe and collision-resistant"
 fi
 
 # Contract: SKILL.md specifies git hash-object as the hash step
@@ -139,15 +139,44 @@ else
     fail "SKILL.md must document --all mode"
 fi
 
-# Contract: stage references propagate resolved_branch across all three stages
-for stage in CHANGE-SUMMARY TEST-PLAN TEST-CASES; do
-    ref_file="$SKILL_DIR/references/${stage}.md"
-    if [[ -f "$ref_file" ]] && grep -q 'resolved_branch' "$ref_file"; then
-        pass "references/${stage}.md uses resolved_branch for stage handoff"
-    else
-        fail "references/${stage}.md must reference resolved_branch"
-    fi
-done
+change_summary_ref="$SKILL_DIR/references/CHANGE-SUMMARY.md"
+test_plan_ref="$SKILL_DIR/references/TEST-PLAN.md"
+test_cases_ref="$SKILL_DIR/references/TEST-CASES.md"
+
+# Contract: follow-up handoff commands keep the resolved branch placeholder intact
+if grep -q '/aif-qa test-plan <resolved_branch>' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md keeps exact test-plan handoff"
+else
+    fail "CHANGE-SUMMARY.md must contain '/aif-qa test-plan <resolved_branch>'"
+fi
+
+if grep -q '/aif-qa test-cases <resolved_branch>' "$test_plan_ref"; then
+    pass "TEST-PLAN.md keeps exact test-cases handoff"
+else
+    fail "TEST-PLAN.md must contain '/aif-qa test-cases <resolved_branch>'"
+fi
+
+# Contract: final-stage guidance still carries the resolved branch context
+if [[ -f "$test_cases_ref" ]] && grep -q 'resolved_branch' "$test_cases_ref"; then
+    pass "TEST-CASES.md preserves resolved_branch context"
+else
+    fail "TEST-CASES.md must reference resolved_branch"
+fi
+
+# Contract: reduced commit scope must also narrow diff scope through analysis_base
+if grep -q 'analysis_base' "$change_summary_ref" && \
+   grep -q 'git diff <analysis_base>...<resolved_branch> --name-status' "$change_summary_ref" && \
+   grep -q 'git diff <analysis_base>...<resolved_branch>' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md uses analysis_base for both diff commands"
+else
+    fail "CHANGE-SUMMARY.md must drive both diff commands from analysis_base"
+fi
+
+if grep -q 'reduced commit scope and diff scope aligned' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md explicitly links reduced commit scope to diff scope"
+else
+    fail "CHANGE-SUMMARY.md must explicitly state that reduced commit scope and diff scope stay aligned"
+fi
 
 # Contract: allowed-tools covers both Bash(git *) and Bash(mkdir *)
 # (an earlier PR review caught a mismatch between instructions and permissions)
@@ -158,9 +187,9 @@ else
     fail "SKILL.md allowed-tools must include Bash(git *) and Bash(mkdir *)"
 fi
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 # Summary
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 TOTAL=$((PASSED + FAILED))
 echo ""
 echo -e "${BOLD}Total:${NC} $TOTAL, ${GREEN}Passed:${NC} $PASSED, ${RED}Failed:${NC} $FAILED"
