@@ -211,6 +211,159 @@ else
     fail "found $DOTTED_REFS dotted invocations in docs"
 fi
 
+# /aif localization contract regression checks
+AIF_SKILL="$ROOT_DIR/skills/aif/SKILL.md"
+MODE2_DESCRIPTION_SECTION="$(awk '
+    /^\*\*Step 3: Create \.ai-factory\/DESCRIPTION\.md\*\*$/ { capture=1 }
+    capture { print }
+    /^\*\*Step 4: Search & Install Skills\*\*$/ { if (capture) exit }
+' "$AIF_SKILL")"
+AGENTS_TEMPLATE_SECTION="$(awk '
+    /^## AGENTS\.md Generation$/ { in_section=1 }
+    in_section && /^\*\*Template:\*\*$/ { capture=1 }
+    capture { print }
+    capture && /^\*\*Rules for AGENTS\.md:\*\*$/ { exit }
+' "$AIF_SKILL")"
+SUMMARY_SECTION="$(awk '
+    /^Present the completion summary and next-step recommendations in resolved `language\.ui`\. Cover:$/ { capture=1 }
+    capture { print }
+    /^\*\*For existing projects \(Mode 1\), also suggest next steps:\*\*$/ { if (capture) exit }
+' "$AIF_SKILL")"
+EXISTING_PROJECT_SUGGESTIONS_SECTION="$(awk '
+    /^Present these suggestions in resolved `language\.ui`:$/ { capture=1 }
+    capture { print }
+    /^Present these as `AskUserQuestion` with multi-select options:$/ { if (capture) exit }
+' "$AIF_SKILL")"
+
+if grep -Fq 'Immediately after determining Mode 1, Mode 2, or Mode 3, resolve the project language settings for the entire `/aif` run.' "$AIF_SKILL"; then
+    pass "/aif resolves language immediately after mode detection"
+else
+    fail "/aif language resolution order missing immediate post-mode contract"
+fi
+
+if grep -Fq 'Write or update `.ai-factory/config.yaml` immediately after resolving the run-scoped language state.' "$AIF_SKILL" \
+   && grep -Fq 'This write MUST happen before writing the first setup artifact and before invoking `/aif-architecture`.' "$AIF_SKILL"; then
+    pass "/aif writes config before first artifact and /aif-architecture"
+else
+    fail "/aif config write ordering contract missing"
+fi
+
+if grep -Fq 'If `.ai-factory/config.yaml` already exists, merge the resolved language values into the existing file instead of replacing the rest of the document.' "$AIF_SKILL" \
+   && grep -Fq 'Preserve existing `paths.*`, `git.*`, `workflow.*`, `rules.*`, and any other non-language keys already present in the file.' "$AIF_SKILL"; then
+    pass "/aif preserves non-language config when updating resolved languages"
+else
+    fail "/aif config merge contract missing for existing config"
+fi
+
+if grep -Fq '`language.technical_terms` — preserve the existing value if it is already set; default to `keep` only when the key is missing' "$AIF_SKILL" \
+   && grep -Fq 'Preserve `language.technical_terms` from existing config when present; otherwise set it to `keep` when writing config.' "$AIF_SKILL"; then
+    pass "/aif preserves language.technical_terms semantics"
+else
+    fail "/aif language.technical_terms preservation contract missing"
+fi
+
+if grep -Fq 'use for all `AskUserQuestion` prompts, intermediate explanations, final summary, and next-step recommendations' "$AIF_SKILL" \
+   && grep -Fq 'use for all setup-time text artifacts created in this run:' "$AIF_SKILL"; then
+    pass "/aif documents language.ui vs language.artifacts split"
+else
+    fail "/aif language.ui vs language.artifacts split missing"
+fi
+
+if grep -Fq 'After creating DESCRIPTION.md, resolve the project language settings.' "$AIF_SKILL"; then
+    fail "late language resolution wording reintroduced in /aif"
+else
+    pass "no late language resolution wording in /aif"
+fi
+
+if grep -Fq '[Enhanced, clear description of the project in English]' "$AIF_SKILL"; then
+    fail "hard-coded English DESCRIPTION placeholder reintroduced in /aif"
+else
+    pass "no hard-coded English DESCRIPTION placeholder in /aif"
+fi
+
+if printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '# [Localized project title in resolved artifacts language]' \
+   && printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '## [Localized heading: Tech Stack]' \
+   && printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '**[Localized label: Programming language]:** [user choice]'; then
+    pass "/aif DESCRIPTION template uses localized artifact placeholders"
+else
+    fail "/aif DESCRIPTION template localization placeholders missing"
+fi
+
+MODE2_CONFIG_LINE=$(printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -nF 'Write `.ai-factory/config.yaml` from `skills/aif/references/config-template.yaml` before saving this file.' | cut -d: -f1 | head -n1)
+MODE2_SAVE_LINE=$(printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -nF 'Save to `.ai-factory/DESCRIPTION.md`.' | cut -d: -f1 | head -n1)
+if [[ -n "$MODE2_CONFIG_LINE" && -n "$MODE2_SAVE_LINE" && "$MODE2_CONFIG_LINE" -lt "$MODE2_SAVE_LINE" ]]; then
+    pass "/aif Mode 2 writes config before saving DESCRIPTION.md"
+else
+    fail "/aif Mode 2 DESCRIPTION/config ordering is wrong"
+fi
+
+if printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '# Project: [Project Name]' \
+   || printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '## Overview' \
+   || printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '## Core Features' \
+   || printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '## Tech Stack' \
+   || printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '## Architecture Notes' \
+   || printf '%s\n' "$MODE2_DESCRIPTION_SECTION" | grep -Fq '## Non-Functional Requirements'; then
+    fail "English DESCRIPTION template headings reintroduced in /aif"
+else
+    pass "no English DESCRIPTION template headings in /aif"
+fi
+
+if printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '| [Localized header: File] | [Localized header: Purpose] |' \
+   && printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '| [Localized header: Document] | [Localized header: Path] | [Localized header: Description] |' \
+   && printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '**[Localized label: Framework]:** [framework]' \
+   && printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '[Localized shell-command decomposition rule in resolved artifacts language]'; then
+    pass "/aif AGENTS template uses localized artifact placeholders"
+else
+    fail "/aif AGENTS template localization placeholders missing"
+fi
+
+if printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '| File | Purpose |' \
+   || printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '| Document | Path | Description |' \
+   || printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq 'Project landing page' \
+   || printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '**Programming language:** [language]' \
+   || printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '**Framework:** [framework]' \
+   || printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '**Database:** [database]' \
+   || printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq '**ORM:** [orm]' \
+   || printf '%s\n' "$AGENTS_TEMPLATE_SECTION" | grep -Fq 'Never combine shell commands with `&&`, `||`, or `;`'; then
+    fail "English AGENTS template text reintroduced in /aif"
+else
+    pass "no English AGENTS template text in /aif"
+fi
+
+if printf '%s\n' "$SUMMARY_SECTION" | grep -Fq '[Localized completion heading in `language.ui`]' \
+   && printf '%s\n' "$SUMMARY_SECTION" | grep -Fq '[Localized roadmap recommendation in `language.ui`]' \
+   && printf '%s\n' "$SUMMARY_SECTION" | grep -Fq '[Localized execution recommendation in `language.ui`]'; then
+    pass "/aif summary template uses localized UI placeholders"
+else
+    fail "/aif summary template localization placeholders missing"
+fi
+
+if printf '%s\n' "$SUMMARY_SECTION" | grep -Fq -- '- Project description:' \
+   || printf '%s\n' "$SUMMARY_SECTION" | grep -Fq -- '- Skills installed:' \
+   || printf '%s\n' "$SUMMARY_SECTION" | grep -Fq -- '- Next steps:'; then
+    fail "English summary template text reintroduced in /aif"
+else
+    pass "no English summary template text in /aif"
+fi
+
+if printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq '[Localized documentation recommendation in `language.ui`]' \
+   && printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq '[Localized CI recommendation in `language.ui`]' \
+   && printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq '[Localized containerization recommendation in `language.ui`]'; then
+    pass "/aif existing-project suggestions use localized UI placeholders"
+else
+    fail "/aif existing-project suggestions localization placeholders missing"
+fi
+
+if printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq 'Generate project documentation' \
+   || printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq 'Add project-specific rules and conventions' \
+   || printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq 'Configure build scripts and automation' \
+   || printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq 'Set up CI/CD pipeline' \
+   || printf '%s\n' "$EXISTING_PROJECT_SUGGESTIONS_SECTION" | grep -Fq 'Containerize the project'; then
+    fail "English existing-project suggestions reintroduced in /aif"
+else
+    pass "no English existing-project suggestions in /aif"
+fi
+
 # No hardcoded agent-specific values (must use {{template_vars}})
 # skills_dir patterns
 HARDCODED_SKILLS_DIR=$(grep -rE '\.(claude|cursor|codex|github|gemini|junie|qwen|windsurf|warp)/skills' "$ROOT_DIR/skills/" "$ROOT_DIR/subagents/" --include='*.md' 2>/dev/null | grep -v '{{' | wc -l | tr -d ' ' || true)
