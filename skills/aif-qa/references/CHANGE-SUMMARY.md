@@ -1,6 +1,6 @@
 # Reference: Change Summary (change-summary)
 
-> **When to use:** When invoked with the `change-summary` argument (or as the first stage of `--all`). Also run this mode first when the change context is unknown - before writing a test plan or test cases.
+> **When to use:** When invoked with the `change-summary` argument (or as the first stage of `--all`). Also run this mode first when the change context is unknown — before writing a test plan or test cases.
 
 ---
 
@@ -24,7 +24,7 @@ Use the `resolved_branch` and `artifact_dir` resolved in SKILL.md Step 0.2.
 git log <effective_base>..<resolved_branch> --oneline
 ```
 
-**Check commit count - if more than 20, ask before proceeding:**
+**Check commit count — if more than 20, ask before proceeding:**
 
 ```text
 AskUserQuestion: Found <N> commits to analyze. Processing all of them may consume significant context. How to proceed?
@@ -36,10 +36,10 @@ Options:
 ```
 
 Based on choice:
-- "Analyze all" -> keep `analysis_base = <effective_base>`
-- "Analyze only the last 20" -> select the 20 most recent commits from the full range, find the oldest commit in that subset, and set `analysis_base = <oldest_selected_commit>^`
+- "Analyze all" → keep `analysis_base = <effective_base>`
+- "Analyze only the last 20" → select the 20 most recent commits from the full range, find the oldest commit in that subset, and set `analysis_base = <oldest_selected_commit>^`
   - This `^` shorthand uses Git's first-parent semantics for the selected oldest commit.
-- "Cancel" -> **STOP**
+- "Cancel" → **STOP**
 
 **Finalize the scoped commit list:**
 
@@ -56,21 +56,21 @@ git diff <analysis_base>...<resolved_branch> --name-status
 git diff <analysis_base>...<resolved_branch>
 ```
 
-**Check diff size - if the diff exceeds ~1000 lines, warn before proceeding:**
+**Check diff size — if the diff exceeds ~1000 lines, warn before proceeding:**
 
 ```text
 AskUserQuestion: The diff is large (<N> lines). Reading it in full will consume significant context. How to proceed?
 
 Options:
-1. Continue - read the full diff
+1. Continue — read the full diff
 2. Read changed files individually instead (recommended for large diffs)
 3. Cancel
 ```
 
 Based on choice:
-- "Continue" -> use the full diff as-is
-- "Read files individually" -> skip the raw diff; proceed to Step 2 where Explore agents will read the files
-- "Cancel" -> **STOP**
+- "Continue" → use the full diff as-is
+- "Read files individually" → skip the raw diff; proceed to Step 2 where Explore agents will read the files
+- "Cancel" → **STOP**
 
 ## Step 2: Explore Key Changed Files
 
@@ -79,16 +79,16 @@ This keeps the main context clean and speeds up analysis on large diffs.
 
 From the `--name-status` output, identify the most important changed files (focus on business logic, skip lock files, generated files, and formatting-only changes).
 
-Launch 1-2 Explore agents simultaneously:
+Launch 1–2 Explore agents simultaneously:
 
 ```text
-Agent 1 - Core changes:
+Agent 1 — Core changes:
 Task(subagent_type: Explore, model: sonnet, prompt:
   "Read and summarize the key changed files: [list of most important files].
    Focus on: what logic changed, what inputs/outputs changed, what side effects are possible.
    Thoroughness: medium. Be concise.")
 
-Agent 2 - Integration points (if needed):
+Agent 2 — Integration points (if needed):
 Task(subagent_type: Explore, model: sonnet, prompt:
   "Find all callers and consumers of [changed modules/functions].
    Identify what adjacent functionality might be affected.
@@ -142,7 +142,7 @@ Save the result to `<artifact_dir>/change-summary.md`.
 
 ## Step 6: Next Step
 
-**If `all_mode = true`** - do NOT show the prompt. Proceed directly to `references/TEST-PLAN.md`.
+**If `all_mode = true`** — do NOT show the prompt. Proceed directly to `references/TEST-PLAN.md`.
 
 **Otherwise:**
 
@@ -150,6 +150,6 @@ Save the result to `<artifact_dir>/change-summary.md`.
 AskUserQuestion: Change summary saved. Proceed to writing the test plan?
 
 Options:
-1. Yes - run /aif-qa test-plan <resolved_branch>
-2. No - stop here
+1. Yes — run /aif-qa test-plan <resolved_branch>
+2. No — stop here
 ```

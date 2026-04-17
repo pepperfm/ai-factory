@@ -18,12 +18,12 @@ FAILED=0
 
 pass() {
     PASSED=$((PASSED + 1))
-    echo -e "  ${GREEN}OK${NC} $1"
+    echo -e "  ${GREEN}✓${NC} $1"
 }
 
 fail() {
     FAILED=$((FAILED + 1))
-    echo -e "  ${RED}FAIL${NC} $1"
+    echo -e "  ${RED}✗${NC} $1"
 }
 
 assert_exact_line() {
@@ -55,16 +55,16 @@ aif_qa_slug() {
     printf '%s-%s\n' "$safe_slug" "$hash8"
 }
 
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 # Part 1: branch-slug algorithm behavior
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== /aif-qa branch-slug algorithm ===${NC}\n"
 
 # Test 1: classic collision case that motivated the follow-up
 s1=$(aif_qa_slug "feature/foo")
 s2=$(aif_qa_slug "feature-foo")
 if [[ "$s1" != "$s2" ]]; then
-    pass "feature/foo vs feature-foo are distinct ($s1 != $s2)"
+    pass "feature/foo vs feature-foo are distinct ($s1 ≠ $s2)"
 else
     fail "feature/foo and feature-foo collapsed to $s1"
 fi
@@ -78,11 +78,11 @@ for b in "${branches[@]}"; do
 done
 unique_count=$(printf '%s\n' "${slugs[@]}" | sort -u | wc -l | tr -d ' ')
 if [[ "$unique_count" -eq "${#branches[@]}" ]]; then
-    pass "${#branches[@]} representative branches -> ${#branches[@]} unique derived slugs"
+    pass "${#branches[@]} representative branches → ${#branches[@]} unique derived slugs"
 else
     fail "expected ${#branches[@]} unique slugs, got $unique_count"
     for i in "${!branches[@]}"; do
-        echo "      '${branches[$i]}' -> ${slugs[$i]}"
+        echo "      '${branches[$i]}' → ${slugs[$i]}"
     done
 fi
 
@@ -110,7 +110,7 @@ else
     fail "slug missing 8-char hex hash suffix: $s"
 fi
 
-# Test 6: deterministic - same input always produces the same slug
+# Test 6: deterministic — same input always produces the same slug
 s1=$(aif_qa_slug "feature/x")
 s2=$(aif_qa_slug "feature/x")
 if [[ "$s1" == "$s2" ]]; then
@@ -119,9 +119,9 @@ else
     fail "non-deterministic slug: $s1 vs $s2"
 fi
 
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 # Part 2: skill contract
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== /aif-qa skill contract ===${NC}\n"
 
 # Contract: SKILL.md documents the deterministic, collision-resistant slug contract
@@ -159,9 +159,9 @@ test_cases_ref="$SKILL_DIR/references/TEST-CASES.md"
 # Contract: follow-up handoff commands keep the exact prompt option lines intact
 assert_exact_line \
     "$change_summary_ref" \
-    '1. Yes - run /aif-qa test-plan <resolved_branch>' \
+    '1. Yes — run /aif-qa test-plan <resolved_branch>' \
     "CHANGE-SUMMARY.md keeps exact test-plan handoff line" \
-    "CHANGE-SUMMARY.md must contain the exact handoff line '1. Yes - run /aif-qa test-plan <resolved_branch>'"
+    "CHANGE-SUMMARY.md must contain the exact handoff line '1. Yes — run /aif-qa test-plan <resolved_branch>'"
 
 assert_exact_line \
     "$test_plan_ref" \
@@ -210,9 +210,9 @@ else
     fail "SKILL.md allowed-tools must include Bash(git *) and Bash(mkdir *)"
 fi
 
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 # Summary
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 TOTAL=$((PASSED + FAILED))
 echo ""
 echo -e "${BOLD}Total:${NC} $TOTAL, ${GREEN}Passed:${NC} $PASSED, ${RED}Failed:${NC} $FAILED"
