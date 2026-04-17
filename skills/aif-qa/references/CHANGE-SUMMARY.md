@@ -14,9 +14,11 @@ Use the `resolved_branch` and `artifact_dir` resolved in SKILL.md Step 0.2.
 > If `resolved_branch` IS the base branch, set `effective_base = <resolved_branch>~1`.
 > Otherwise, set `effective_base = <base_branch>`.
 >
-> Use `effective_base` for all git commands below. This ensures the log and diff are always consistent and anchored to `resolved_branch`, not to the current checkout.
+> Build the full commit range from `effective_base..<resolved_branch>`.
+> Start with `analysis_base = <effective_base>`.
+> This special case stays anchored to `resolved_branch`, not to the current checkout.
 
-**Get commit list:**
+**Get the full commit list:**
 
 ```bash
 git log <effective_base>..<resolved_branch> --oneline
@@ -24,7 +26,7 @@ git log <effective_base>..<resolved_branch> --oneline
 
 **Check commit count — if more than 20, ask before proceeding:**
 
-```
+```text
 AskUserQuestion: Found <N> commits to analyze. Processing all of them may consume significant context. How to proceed?
 
 Options:
@@ -34,20 +36,29 @@ Options:
 ```
 
 Based on choice:
-- "Analyze all" → continue with the full commit list
-- "Analyze only the last 20" → truncate to the 20 most recent
+- "Analyze all" → keep `analysis_base = <effective_base>`
+- "Analyze only the last 20" → select the 20 most recent commits from the full range, find the oldest commit in that subset, and set `analysis_base = <oldest_selected_commit>^`
+  - This `^` shorthand uses Git's first-parent semantics for the selected oldest commit.
 - "Cancel" → **STOP**
+
+**Finalize the scoped commit list:**
+
+```bash
+git log <analysis_base>..<resolved_branch> --oneline
+```
+
+Use `analysis_base` for the final commit list and for both diff commands below. This keeps the reduced commit scope and diff scope aligned.
 
 **Get changed files and diff:**
 
 ```bash
-git diff <effective_base>...<resolved_branch> --name-status
-git diff <effective_base>...<resolved_branch>
+git diff <analysis_base>...<resolved_branch> --name-status
+git diff <analysis_base>...<resolved_branch>
 ```
 
 **Check diff size — if the diff exceeds ~1000 lines, warn before proceeding:**
 
-```
+```text
 AskUserQuestion: The diff is large (<N> lines). Reading it in full will consume significant context. How to proceed?
 
 Options:
@@ -70,7 +81,7 @@ From the `--name-status` output, identify the most important changed files (focu
 
 Launch 1–2 Explore agents simultaneously:
 
-```
+```text
 Agent 1 — Core changes:
 Task(subagent_type: Explore, model: sonnet, prompt:
   "Read and summarize the key changed files: [list of most important files].
@@ -135,7 +146,7 @@ Save the result to `<artifact_dir>/change-summary.md`.
 
 **Otherwise:**
 
-```
+```text
 AskUserQuestion: Change summary saved. Proceed to writing the test plan?
 
 Options:

@@ -74,19 +74,19 @@ Parse `$ARGUMENTS` fully before doing anything else:
 
 **Resolve the working branch:**
 
-```
+```text
 If branch was provided in arguments → use it as the resolved branch
 Otherwise → run: git branch --show-current
 ```
 
 Store both values for use in all reference files:
 - `resolved_branch` — the branch being analyzed (used to locate/save artifacts)
-- `artifact_dir` — `<resolved paths.qa>/<branch-slug>`, where `branch-slug` is an **injective** encoding of `resolved_branch`. Compute it in three steps:
+- `artifact_dir` — `<resolved paths.qa>/<branch-slug>`, where `branch-slug` is a deterministic, filesystem-safe, collision-resistant slug derived from `resolved_branch`. Compute it in three steps:
   1. **Safe slug.** Take `resolved_branch` and replace every character that is not in `[A-Za-z0-9._-]` with `-`, collapse runs of consecutive `-` into a single `-`, and trim leading/trailing `-`. If the result is empty, use `branch`. Optionally truncate to 40 characters. Call this `safe_slug`.
-  2. **Hash suffix.** Run `git hash-object --stdin <<< "<resolved_branch>"` and take the **first 8 hex characters** of the output. Call this `hash8`. The hash is derived from the **original, unnormalized** branch name — this is what guarantees uniqueness.
+  2. **Hash suffix.** Run `git hash-object --stdin <<< "<resolved_branch>"` and take the **first 8 hex characters** of the output. Call this `hash8`. The hash is derived from the **original, unnormalized** branch name so branches that collapse to the same `safe_slug` still produce different derived slugs in normal use.
   3. **Combine:** `branch-slug = "<safe_slug>-<hash8>"`.
 
-  **Why the hash:** a readable slug alone is lossy — `feature/foo` and `feature-foo` normalize to the same `safe_slug` and would overwrite each other's artifacts. Appending a hash of the full original name makes the mapping injective: different branches always resolve to different directories.
+  **Why the hash:** a readable slug alone is lossy — `feature/foo` and `feature-foo` normalize to the same `safe_slug` and would overwrite each other's artifacts. Appending a short hash of the full original name keeps the derived slug stable, readable, and collision-resistant for practical branch naming.
 
   **Examples:**
   - `feature/foo` → `safe_slug=feature-foo`, `hash8=a72ccce7` → `feature-foo-a72ccce7`
@@ -96,7 +96,7 @@ Store both values for use in all reference files:
 
 **If no mode was provided and `all_mode = false` — ask the user:**
 
-```
+```text
 AskUserQuestion: Which QA mode would you like to run?
 
 Options:
@@ -110,7 +110,7 @@ Options:
 
 The skill runs **strictly sequentially** — each stage uses the artifact from the previous one:
 
-```
+```text
 change-summary → test-plan → test-cases
 ```
 
@@ -133,7 +133,7 @@ Read `references/TEST-CASES.md`
 Run all three modes in sequence. After each stage completes successfully,
 proceed to the next automatically — **do NOT show the inter-stage `AskUserQuestion`**.
 
-```
+```text
 1. Execute change-summary (references/CHANGE-SUMMARY.md) → save artifact
 2. Execute test-plan      (references/TEST-PLAN.md)      → save artifact
 3. Execute test-cases     (references/TEST-CASES.md)     → save artifact

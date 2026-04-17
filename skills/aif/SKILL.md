@@ -490,7 +490,7 @@ After getting description, proceed with same stack selection as Mode 2:
 
 **Step 5: Create .ai-factory/DESCRIPTION.md**
 
-Same as Mode 2, in resolved `language.artifacts`.
+Same as Mode 2, in resolved `language.artifacts`, including creating `.ai-factory` before writing `config.yaml` or `DESCRIPTION.md`.
 
 **Step 6: Setup Context**
 

@@ -26,6 +26,19 @@ fail() {
     echo -e "  ${RED}✗${NC} $1"
 }
 
+assert_exact_line() {
+    local file="$1"
+    local expected="$2"
+    local success_message="$3"
+    local failure_message="$4"
+
+    if grep -Fqx "$expected" "$file"; then
+        pass "$success_message"
+    else
+        fail "$failure_message"
+    fi
+}
+
 # Reference implementation of the branch-slug algorithm documented in
 # skills/aif-qa/SKILL.md Step 0.2. Kept in lock-step with the skill's
 # three-step spec: safe_slug, 8-char hash of the original branch name, combine.
@@ -43,11 +56,11 @@ aif_qa_slug() {
 }
 
 # ─────────────────────────────────────────────
-# Part 1: branch-slug algorithm (branch-key uniqueness)
+# Part 1: branch-slug algorithm behavior
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== /aif-qa branch-slug algorithm ===${NC}\n"
 
-# Test 1: classic collision case that motivated the P1 fix in PR #68
+# Test 1: classic collision case that motivated the follow-up
 s1=$(aif_qa_slug "feature/foo")
 s2=$(aif_qa_slug "feature-foo")
 if [[ "$s1" != "$s2" ]]; then
@@ -56,8 +69,8 @@ else
     fail "feature/foo and feature-foo collapsed to $s1"
 fi
 
-# Test 2: multi-way injectivity — 4 branches that all share the same safe_slug
-# 'feat-x', plus two that differ on safe_slug. All 6 must produce unique slugs.
+# Test 2: several branches that normalize toward the same readable slug
+# still resolve to distinct derived slugs once the hash suffix is applied.
 branches=('feat/x' 'feat-x' 'feat x' 'feat--x' 'feat.x' 'feat_x')
 slugs=()
 for b in "${branches[@]}"; do
@@ -65,7 +78,7 @@ for b in "${branches[@]}"; do
 done
 unique_count=$(printf '%s\n' "${slugs[@]}" | sort -u | wc -l | tr -d ' ')
 if [[ "$unique_count" -eq "${#branches[@]}" ]]; then
-    pass "${#branches[@]} colliding branches → ${#branches[@]} unique slugs"
+    pass "${#branches[@]} representative branches → ${#branches[@]} unique derived slugs"
 else
     fail "expected ${#branches[@]} unique slugs, got $unique_count"
     for i in "${!branches[@]}"; do
@@ -107,15 +120,15 @@ else
 fi
 
 # ─────────────────────────────────────────────
-# Part 2: skill contract (explicit-branch flow, --all mode, stage handoff)
+# Part 2: skill contract
 # ─────────────────────────────────────────────
 echo -e "\n${BOLD}=== /aif-qa skill contract ===${NC}\n"
 
-# Contract: SKILL.md documents the injective slug encoding
-if grep -qi 'injective' "$SKILL_DIR/SKILL.md"; then
-    pass "SKILL.md documents injective branch-slug encoding"
+# Contract: SKILL.md documents the deterministic, collision-resistant slug contract
+if grep -qi 'collision-resistant' "$SKILL_DIR/SKILL.md" && grep -qi 'filesystem-safe' "$SKILL_DIR/SKILL.md"; then
+    pass "SKILL.md documents a filesystem-safe, collision-resistant branch slug"
 else
-    fail "SKILL.md must mention 'injective' branch-slug encoding"
+    fail "SKILL.md must describe the branch slug as filesystem-safe and collision-resistant"
 fi
 
 # Contract: SKILL.md specifies git hash-object as the hash step
@@ -139,15 +152,54 @@ else
     fail "SKILL.md must document --all mode"
 fi
 
-# Contract: stage references propagate resolved_branch across all three stages
-for stage in CHANGE-SUMMARY TEST-PLAN TEST-CASES; do
-    ref_file="$SKILL_DIR/references/${stage}.md"
-    if [[ -f "$ref_file" ]] && grep -q 'resolved_branch' "$ref_file"; then
-        pass "references/${stage}.md uses resolved_branch for stage handoff"
-    else
-        fail "references/${stage}.md must reference resolved_branch"
-    fi
-done
+change_summary_ref="$SKILL_DIR/references/CHANGE-SUMMARY.md"
+test_plan_ref="$SKILL_DIR/references/TEST-PLAN.md"
+test_cases_ref="$SKILL_DIR/references/TEST-CASES.md"
+
+# Contract: follow-up handoff commands keep the exact prompt option lines intact
+assert_exact_line \
+    "$change_summary_ref" \
+    '1. Yes — run /aif-qa test-plan <resolved_branch>' \
+    "CHANGE-SUMMARY.md keeps exact test-plan handoff line" \
+    "CHANGE-SUMMARY.md must contain the exact handoff line '1. Yes — run /aif-qa test-plan <resolved_branch>'"
+
+assert_exact_line \
+    "$test_plan_ref" \
+    '1. Yes — run /aif-qa test-cases <resolved_branch>' \
+    "TEST-PLAN.md keeps exact test-cases handoff line" \
+    "TEST-PLAN.md must contain the exact handoff line '1. Yes — run /aif-qa test-cases <resolved_branch>'"
+
+# Contract: final-stage guidance still carries the resolved branch context
+if [[ -f "$test_cases_ref" ]] && grep -q 'resolved_branch' "$test_cases_ref"; then
+    pass "TEST-CASES.md preserves resolved_branch context"
+else
+    fail "TEST-CASES.md must reference resolved_branch"
+fi
+
+# Contract: reduced commit scope must also narrow diff scope through exact analysis_base command lines
+if grep -Fq 'analysis_base' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md defines analysis_base"
+else
+    fail "CHANGE-SUMMARY.md must define analysis_base"
+fi
+
+assert_exact_line \
+    "$change_summary_ref" \
+    'git diff <analysis_base>...<resolved_branch> --name-status' \
+    "CHANGE-SUMMARY.md keeps exact name-status diff line" \
+    "CHANGE-SUMMARY.md must contain the exact line 'git diff <analysis_base>...<resolved_branch> --name-status'"
+
+assert_exact_line \
+    "$change_summary_ref" \
+    'git diff <analysis_base>...<resolved_branch>' \
+    "CHANGE-SUMMARY.md keeps exact full diff line" \
+    "CHANGE-SUMMARY.md must contain the exact line 'git diff <analysis_base>...<resolved_branch>'"
+
+if grep -q 'reduced commit scope and diff scope aligned' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md explicitly links reduced commit scope to diff scope"
+else
+    fail "CHANGE-SUMMARY.md must explicitly state that reduced commit scope and diff scope stay aligned"
+fi
 
 # Contract: allowed-tools covers both Bash(git *) and Bash(mkdir *)
 # (an earlier PR review caught a mismatch between instructions and permissions)

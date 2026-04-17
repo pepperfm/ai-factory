@@ -169,7 +169,7 @@ Current config-agnostic built-ins include `/aif-best-practices`, `/aif-build-aut
 - `git.skip_push_after_commit: true` makes `/aif-commit` stop after local commit without showing push prompt.
 - `paths.plan` remains the default fast-plan file. If you prefer fast plans inside `paths.plans/`, change `paths.plan` manually in `config.yaml`.
 - `paths.docs` controls where `/aif-docs` writes the detailed documentation pages. `README.md` remains the landing page in the project root.
-- `paths.qa` controls where `/aif-qa` stores QA artifacts. A derived branch slug is appended automatically: `<paths.qa>/<branch-slug>/change-summary.md`, `test-plan.md`, `test-cases.md`. The slug is an injective encoding of the branch name — see `skills/aif-qa/SKILL.md` for the full algorithm.
+- `paths.qa` controls where `/aif-qa` stores QA artifacts. A derived branch slug is appended automatically: `<paths.qa>/<branch-slug>/change-summary.md`, `test-plan.md`, `test-cases.md`. The slug is a deterministic, filesystem-safe, stable derived value with a short hash suffix for collision resistance — see `skills/aif-qa/SKILL.md` for the full algorithm.
 
 **Current schema limits:** `config.yaml` still leaves `.ai-factory/skill-context/` fixed by command contract. `README.md` and `docs-html/` remain fixed by current documentation workflow.
 
