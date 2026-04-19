@@ -206,7 +206,12 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
           extensions: existingExtensions,
           agents: installedAgents,
         }, manifest);
-        await installExtensionAgentFilesForAllAgents(projectDir, installedAgents, dir, manifest);
+        const agentFileResults = await installExtensionAgentFilesForAllAgents(projectDir, installedAgents, dir, manifest);
+        for (const agent of installedAgents) {
+          const installed = agentFileResults.get(agent.id) ?? [];
+          if (installed.length === 0) continue;
+          agent.installedAgentFiles = [...new Set([...(agent.installedAgentFiles ?? []), ...installed])];
+        }
       }
 
       let totalInjections = 0;

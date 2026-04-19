@@ -585,8 +585,48 @@ else
 fi
 
 # ─────────────────────────────────────────────
+# Part 4.5: Planner parity contract regressions
+# ─────────────────────────────────────────────
+echo -e "\n${BOLD}=== Planner parity contract checks ===${NC}\n"
+
+if grep -qE 'git checkout main|git pull origin main' "$ROOT_DIR/subagents/plan-polisher.md"; then
+    fail "plan-polisher must not hardcode main as the base branch"
+else
+    pass "plan-polisher base-branch contract"
+fi
+
+if grep -qF '| mode           | full' "$ROOT_DIR/subagents/plan-coordinator.md" \
+    && grep -qF -- '- mode: `full`' "$ROOT_DIR/subagents/plan-polisher.md"; then
+    pass "planner defaults stay on the richer full contract"
+else
+    fail "planner defaults stay on the richer full contract"
+fi
+
+if grep -qF 'Public command: /aif-improve.' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/skills/aif-improve-plus/SKILL.md" \
+    && grep -qF 'bounded worker agents' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/README.md"; then
+    pass "extension improve/runtime support statements stay synchronized"
+else
+    fail "extension improve/runtime support statements stay synchronized"
+fi
+
+# ─────────────────────────────────────────────
 # Part 5: Internal security self-scan
 # ─────────────────────────────────────────────
+if grep -R -qE '^[[:space:]]*reasoning_effort = |^[[:space:]]*prompt = """' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex"; then
+    fail "AIFHub Codex agent files must use canonical TOML keys"
+else
+    pass "AIFHub Codex agent file schema"
+fi
+
+if grep -qF 'model_reasoning_effort = "high"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-plan-polisher.toml" \
+    && grep -qF 'sandbox_mode = "workspace-write"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-plan-polisher.toml" \
+    && grep -qF 'sandbox_mode = "read-only"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-review-sidecar.toml" \
+    && grep -qF 'sandbox_mode = "read-only"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-security-sidecar.toml"; then
+    pass "AIFHub Codex helper sandbox contract"
+else
+    fail "AIFHub Codex helper sandbox contract"
+fi
+
 echo -e "\n${BOLD}=== Internal security self-scan ===${NC}\n"
 
 set +e

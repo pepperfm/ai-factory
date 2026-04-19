@@ -19,6 +19,7 @@ import {
 import {applyExtensionInjections} from '../../core/injections.js';
 import {
   installExtensionSkillsForAllAgents,
+  installExtensionAgentFilesForAllAgents,
   installSkillsForAllAgents,
   collectReplacedSkills,
   refreshExtensions,
@@ -305,6 +306,21 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       const toRestore = failedReplacements.filter(s => !stillReplacedByOthers.has(s));
       if (toRestore.length > 0) {
         await installSkillsForAllAgents(projectDir, config.agents, toRestore);
+      }
+    }
+
+    // Re-install extension-managed agent files so ordinary updates heal drift
+    // even when the extension version itself did not change.
+    for (const ext of extensions) {
+      const extensionDir = path.join(getExtensionsDir(projectDir), ext.name);
+      const manifest = await loadExtensionManifest(extensionDir);
+      if (!manifest?.agentFiles?.length) continue;
+
+      const results = await installExtensionAgentFilesForAllAgents(projectDir, config.agents, extensionDir, manifest);
+      for (const agent of config.agents) {
+        const installed = results.get(agent.id) ?? [];
+        if (installed.length === 0) continue;
+        agent.installedAgentFiles = [...new Set([...(agent.installedAgentFiles ?? []), ...installed])];
       }
     }
 

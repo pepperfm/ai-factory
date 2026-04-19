@@ -70,6 +70,20 @@ assert_not_exists() {
   fi
 }
 
+assert_not_contains() {
+  local file="$1"
+  local pattern="$2"
+  local hint="$3"
+  if grep -qE "$pattern" "$file"; then
+    echo "Assertion failed: $hint"
+    echo "Pattern: $pattern"
+    echo "--- output ---"
+    cat "$file"
+    echo "--------------"
+    exit 1
+  fi
+}
+
 run_update() {
   local mode="$1"
   local output_file="$2"
@@ -325,3 +339,35 @@ assert_contains "$LEGACY_CLAUDE_OUTPUT" "\[claude\] Agent files:" "legacy claude
 node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if('subagentsDir' in a || 'installedSubagents' in a || 'managedSubagents' in a)process.exit(1);if(a.agentsDir!=='.claude/agents')process.exit(1);if(!Array.isArray(a.installedAgentFiles)||!a.installedAgentFiles.includes('plan-polisher.md'))process.exit(1);if(!a.managedAgentFiles||!a.managedAgentFiles['plan-polisher.md'])process.exit(1);" "$LEGACY_CLAUDE_PROJECT_DIR/.ai-factory.json"
 
 echo "legacy claude migration smoke tests passed"
+
+# -------------------------------------------------------------------
+# AIFHub extension update smoke: update should re-apply the canonical
+# /aif-improve injection contract and heal bounded Codex helper drift.
+# -------------------------------------------------------------------
+
+AIFHUB_EXTENSION_DIR="$ROOT_DIR/.ai-factory/extensions/aifhub-extension"
+AIFHUB_PROJECT_DIR="$TMPDIR/update-smoke-aifhub-extension"
+mkdir -p "$AIFHUB_PROJECT_DIR"
+
+(cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif,aif-improve > "$TMPDIR/update-aifhub-base.log" 2>&1)
+(cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$AIFHUB_EXTENSION_DIR" > "$TMPDIR/update-aifhub-add.log" 2>&1)
+(cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif,aif-improve > "$TMPDIR/update-aifhub-reinit.log" 2>&1)
+
+echo "<!-- drift -->" >> "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md"
+rm "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml"
+
+AIFHUB_UPDATE_OUTPUT="$TMPDIR/update-aifhub.log"
+(cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$AIFHUB_UPDATE_OUTPUT" 2>&1)
+
+assert_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "canonical refinement command for this extension workflow" "AIFHub update must re-apply the canonical improve override"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/skills/aif-improve/SKILL.md" "canonical refinement command for this extension workflow" "AIFHub update must keep Codex improve override in sync"
+assert_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "runtime-specific delegation prompts" "AIFHub update must preserve the non-canonical delegation warning"
+assert_not_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "<!-- drift -->" "AIFHub update must heal local drift in injected improve skill copies"
+assert_exists "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "AIFHub update must restore the bounded Codex plan-polisher helper"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "bounded one-shot worker" "AIFHub update must restore the current Codex helper contract"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model_reasoning_effort = "high"' "AIFHub update must restore the canonical reasoning key"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'sandbox_mode = "workspace-write"' "AIFHub update must restore the write-capable sandbox mode"
+assert_not_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" '^reasoning_effort = ' "AIFHub update must not restore legacy reasoning key"
+assert_not_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" '^prompt = """' "AIFHub update must not restore legacy prompt key"
+
+echo "aifhub extension update smoke tests passed"

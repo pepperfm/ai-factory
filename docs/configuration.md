@@ -67,6 +67,8 @@
 
 The `agents` array can include any built-in agent IDs plus runtime IDs provided by installed extensions. Each agent keeps its own `skillsDir`, installed skills list, and MCP preferences. Runtimes that support custom agent files also persist `agentsDir` and `installedAgentFiles`, so `ai-factory update` can refresh package-managed agent files alongside skills. AI Factory additionally stores internal `managedSkills` and `managedAgentFiles` hash maps in `.ai-factory.json`; they are omitted from the example above for brevity. `loadConfig()` still reads legacy Claude-only `subagentsDir`, `installedSubagents`, and `managedSubagents` keys for backward compatibility, but new saves use the universal field names.
 
+Extension-provided agent files can target non-Claude runtimes such as Codex. Those files are often bounded helper workers (for example, one-shot reviewers or plan polishers), not automatic equivalents of the bundled Claude coordinator agents. Documentation and prompts should describe those support boundaries explicitly instead of implying full parity across runtimes. AI Factory copies those runtime-specific agent files verbatim; runtime-local keys such as `model`, `model_reasoning_effort`, `sandbox_mode`, and `developer_instructions` belong in the agent file itself rather than in `.ai-factory.json` or workflow prompts.
+
 The optional `extensions` array tracks installed extensions by name, original source, and version. `ai-factory update` now refreshes these extensions from their saved sources before base-skill updates, and `ai-factory extension update [name] --force` refreshes them without running the full base-skill update flow.
 
 Extension refresh uses the saved `source` field:
@@ -164,7 +166,7 @@ Current config-agnostic built-ins include `/aif-best-practices`, `/aif-build-aut
 
 **Git workflow semantics:**
 - `git.enabled: false` disables branch/worktree assumptions entirely. `/aif-plan full` still creates a rich full plan, but it stores it in `paths.plans/<slug>.md` without running git commands.
-- `git.base_branch` is the branch used for diff, review, verify, and merge guidance. Skills must not hardcode `main`.
+- `git.base_branch` is the branch used for diff, review, verify, branch creation, and merge guidance. Skills must not hardcode `main`.
 - `git.create_branches: false` keeps git awareness enabled but disables automatic branch creation. This lets teams keep full plans without forcing branch-per-feature flow.
 - `git.skip_push_after_commit: true` makes `/aif-commit` stop after local commit without showing push prompt.
 - `paths.plan` remains the default fast-plan file. If you prefer fast plans inside `paths.plans/`, change `paths.plan` manually in `config.yaml`.

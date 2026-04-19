@@ -270,6 +270,34 @@ assert_not_exists "$EXT_PROJECT_DIR/.codex/agents/test-helper.toml" "extension c
 echo "extension agent file init smoke tests passed"
 
 # -------------------------------------------------------------------
+# AIFHub extension smoke: init should install bounded Codex helper
+# agent files and inject the canonical /aif-improve companion-plan
+# contract into supported runtime skill copies.
+# -------------------------------------------------------------------
+
+AIFHUB_EXTENSION_DIR="$ROOT_DIR/.ai-factory/extensions/aifhub-extension"
+AIFHUB_PROJECT_DIR="$TMPDIR/init-smoke-aifhub-extension"
+mkdir -p "$AIFHUB_PROJECT_DIR"
+
+(cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif,aif-improve > "$TMPDIR/init-aifhub-base.log" 2>&1)
+(cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$AIFHUB_EXTENSION_DIR" > "$TMPDIR/init-aifhub-add.log" 2>&1)
+(cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif,aif-improve > "$TMPDIR/init-aifhub-reinit.log" 2>&1)
+
+assert_exists "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "AIFHub init must install the bounded Codex plan-polisher helper"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "bounded planning worker" "AIFHub Codex helper description must be installed"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model_reasoning_effort = "high"' "AIFHub Codex plan-polisher must use canonical reasoning key"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'sandbox_mode = "workspace-write"' "AIFHub Codex plan-polisher must declare write-capable sandbox mode"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'developer_instructions = """' "AIFHub Codex plan-polisher must use canonical instructions key"
+assert_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "canonical refinement command for this extension workflow" "AIFHub init must inject the canonical improve override into Claude skill copies"
+assert_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "runtime-specific delegation prompts" "AIFHub init must inject the non-canonical delegation warning into Claude skill copies"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/skills/aif-improve/SKILL.md" "canonical refinement command for this extension workflow" "AIFHub init must inject the canonical improve override into Codex skill copies"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/skills/aif-improve/SKILL.md" "runtime-specific delegation prompts" "AIFHub init must inject the non-canonical delegation warning into Codex skill copies"
+
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const codex=c.agents.find(a=>a.id==='codex');if(!codex||codex.agentsDir!=='.codex/agents')process.exit(1);if(!Array.isArray(codex.installedAgentFiles)||!codex.installedAgentFiles.includes('aifhub-plan-polisher.toml'))process.exit(1);" "$AIFHUB_PROJECT_DIR/.ai-factory.json"
+
+echo "aifhub extension init smoke tests passed"
+
+# -------------------------------------------------------------------
 # Ownership conflict smoke: extension add must reject agentFiles that
 # collide with bundled Claude agent file targets.
 # -------------------------------------------------------------------
