@@ -91,6 +91,61 @@ function logExtension(level: ExtensionLogLevel, message: string, context?: Recor
   console.log(line);
 }
 
+function isMissingCommandError(error: unknown): error is NodeJS.ErrnoException {
+  return typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && (error as NodeJS.ErrnoException).code === 'ENOENT';
+}
+
+function isMissingNpmShellError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+
+  const message = 'message' in error ? String((error as { message?: unknown }).message ?? '') : '';
+  const stderr = 'stderr' in error ? String((error as { stderr?: unknown }).stderr ?? '') : '';
+
+  return message.includes('npm is not recognized')
+    || stderr.includes('npm is not recognized')
+    || message.includes('\'npm\' is not recognized')
+    || stderr.includes('\'npm\' is not recognized');
+}
+
+function getPlatformCommand(command: 'git' | 'tar'): string {
+  return command;
+}
+
+async function resolveNpmCommand(): Promise<{ command: string; argsPrefix: string[] }> {
+  const nodeDir = path.dirname(process.execPath);
+  const npmCliCandidates = [
+    path.join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    path.resolve(nodeDir, '..', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    path.resolve(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+  ];
+
+  for (const candidate of new Set(npmCliCandidates)) {
+    if (await fs.pathExists(candidate)) {
+      return {
+        command: process.execPath,
+        argsPrefix: [candidate],
+      };
+    }
+  }
+
+  if (process.platform === 'win32') {
+    return {
+      command: process.env.ComSpec || 'cmd.exe',
+      argsPrefix: ['/d', '/s', '/c', 'npm'],
+    };
+  }
+
+  return {
+    command: 'npm',
+    argsPrefix: [],
+  };
+}
+
 function isValidVersionString(version: string): boolean {
   return semver.valid(version) !== null;
 }
@@ -774,11 +829,25 @@ async function resolveFromLocal(sourcePath: string): Promise<ResolvedExtension> 
 async function resolveFromNpm(projectDir: string, packageName: string): Promise<ResolvedExtension> {
   const { execFileSync } = await import('child_process');
   const tmpDir = path.join(getExtensionsDir(projectDir), '.tmp-install');
+  const npmRunner = await resolveNpmCommand();
+  const tarCommand = getPlatformCommand('tar');
   logExtension('debug', 'Resolving npm extension source', { packageName, tmpDir });
   await removeDirectory(tmpDir);
   await ensureDir(tmpDir);
 
-  execFileSync('npm', ['pack', packageName, '--pack-destination', tmpDir], { stdio: 'pipe' });
+  try {
+    execFileSync(
+      npmRunner.command,
+      [...npmRunner.argsPrefix, 'pack', packageName, '--pack-destination', tmpDir],
+      { stdio: 'pipe' },
+    );
+  } catch (error) {
+    await removeDirectory(tmpDir);
+    if (isMissingCommandError(error) || isMissingNpmShellError(error)) {
+      throw new Error('npm is required to install npm-based extensions but was not found in PATH.');
+    }
+    throw error;
+  }
 
   const files = await fs.readdir(tmpDir);
   const tgzFile = files.find(f => f.endsWith('.tgz'));
@@ -789,7 +858,15 @@ async function resolveFromNpm(projectDir: string, packageName: string): Promise<
 
   const extractDir = path.join(tmpDir, 'extracted');
   await ensureDir(extractDir);
-  execFileSync('tar', ['-xzf', path.join(tmpDir, tgzFile), '-C', extractDir], { stdio: 'pipe' });
+  try {
+    execFileSync(tarCommand, ['-xzf', path.join(tmpDir, tgzFile), '-C', extractDir], { stdio: 'pipe' });
+  } catch (error) {
+    await removeDirectory(tmpDir);
+    if (isMissingCommandError(error)) {
+      throw new Error('tar is required to extract npm-based extensions but was not found in PATH.');
+    }
+    throw error;
+  }
 
   const packageDir = path.join(extractDir, 'package');
   const manifest = await loadExtensionManifest(packageDir);
@@ -810,6 +887,7 @@ async function resolveFromNpm(projectDir: string, packageName: string): Promise<
 async function resolveFromGit(projectDir: string, url: string): Promise<ResolvedExtension> {
   const { execFileSync } = await import('child_process');
   const tmpDir = path.join(getExtensionsDir(projectDir), '.tmp-clone');
+  const gitCommand = getPlatformCommand('git');
   const gitSource = parseGitSource(url);
   const sourceType = classifyExtensionSource(url);
   logExtension('debug', 'Resolving git extension source', {
@@ -838,7 +916,15 @@ async function resolveFromGit(projectDir: string, url: string): Promise<Resolved
     cloneArgs.push('--branch', gitSource.ref, '--single-branch');
   }
   cloneArgs.push(gitSource.cloneUrl, tmpDir);
-  execFileSync('git', cloneArgs, { stdio: 'pipe' });
+  try {
+    execFileSync(gitCommand, cloneArgs, { stdio: 'pipe' });
+  } catch (error) {
+    await removeDirectory(tmpDir);
+    if (isMissingCommandError(error)) {
+      throw new Error('git is required to install extensions from Git sources but was not found in PATH.');
+    }
+    throw error;
+  }
 
   const manifest = await loadExtensionManifest(tmpDir);
   if (!manifest) {
