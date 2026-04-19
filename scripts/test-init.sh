@@ -193,6 +193,7 @@ mkdir -p "$EXT_PROJECT_DIR"
 
 (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude --skills aif > "$TMPDIR/init-ext-base.log" 2>&1)
 (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$EXTENSION_DIR" > "$TMPDIR/init-ext-add.log" 2>&1)
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const claude=c.agents.find(a=>a.id==='claude');if(!claude||!Array.isArray(claude.installedAgentFiles)||!claude.installedAgentFiles.includes('test-sidecar.md'))process.exit(1);" "$EXT_PROJECT_DIR/.ai-factory.json"
 (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex,test-runtime --skills aif > "$TMPDIR/init-ext-reinit.log" 2>&1)
 
 assert_exists "$EXT_PROJECT_DIR/.claude/agents/test-sidecar.md" "extension claude agent file must be installed on init"
@@ -252,6 +253,7 @@ EOF
 (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension update --force > "$TMPDIR/init-ext-update.log" 2>&1)
 assert_contains "$EXT_PROJECT_DIR/.codex/agents/test-helper.toml" "updated codex agent file" "extension update must refresh codex agent file"
 assert_contains "$EXT_PROJECT_DIR/.test-runtime/agents/test-agent.toml" "updated dynamic runtime agent file" "extension update must refresh dynamic runtime agent file"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const codex=c.agents.find(a=>a.id==='codex');const dyn=c.agents.find(a=>a.id==='test-runtime');if(!codex||!dyn)process.exit(1);if(!Array.isArray(codex.installedAgentFiles)||!codex.installedAgentFiles.includes('test-helper.toml'))process.exit(1);if(!Array.isArray(dyn.installedAgentFiles)||!dyn.installedAgentFiles.includes('test-agent.toml'))process.exit(1);" "$EXT_PROJECT_DIR/.ai-factory.json"
 
 # Remove should be blocked while dynamic runtime is still configured.
 if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension remove aif-ext-runtime-agent-files > "$TMPDIR/init-ext-remove-blocked.log" 2>&1); then
@@ -281,11 +283,13 @@ mkdir -p "$AIFHUB_PROJECT_DIR"
 
 (cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif,aif-improve > "$TMPDIR/init-aifhub-base.log" 2>&1)
 (cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$AIFHUB_EXTENSION_DIR" > "$TMPDIR/init-aifhub-add.log" 2>&1)
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const codex=c.agents.find(a=>a.id==='codex');if(!codex||!Array.isArray(codex.installedAgentFiles)||!codex.installedAgentFiles.includes('aifhub-plan-polisher.toml'))process.exit(1);" "$AIFHUB_PROJECT_DIR/.ai-factory.json"
 (cd "$AIFHUB_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif,aif-improve > "$TMPDIR/init-aifhub-reinit.log" 2>&1)
 
 assert_exists "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "AIFHub init must install the bounded Codex plan-polisher helper"
 assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "bounded planning worker" "AIFHub Codex helper description must be installed"
-assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model_reasoning_effort = "high"' "AIFHub Codex plan-polisher must use canonical reasoning key"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model = "gpt-5.4-mini"' "AIFHub Codex plan-polisher must use the bounded mini model"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model_reasoning_effort = "medium"' "AIFHub Codex plan-polisher must use canonical reasoning key"
 assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'sandbox_mode = "workspace-write"' "AIFHub Codex plan-polisher must declare write-capable sandbox mode"
 assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'developer_instructions = """' "AIFHub Codex plan-polisher must use canonical instructions key"
 assert_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "canonical refinement command for this extension workflow" "AIFHub init must inject the canonical improve override into Claude skill copies"

@@ -365,9 +365,11 @@ assert_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "runti
 assert_not_contains "$AIFHUB_PROJECT_DIR/.claude/skills/aif-improve/SKILL.md" "<!-- drift -->" "AIFHub update must heal local drift in injected improve skill copies"
 assert_exists "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "AIFHub update must restore the bounded Codex plan-polisher helper"
 assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" "bounded one-shot worker" "AIFHub update must restore the current Codex helper contract"
-assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model_reasoning_effort = "high"' "AIFHub update must restore the canonical reasoning key"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model = "gpt-5.4-mini"' "AIFHub update must restore the bounded mini model"
+assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'model_reasoning_effort = "medium"' "AIFHub update must restore the canonical reasoning key"
 assert_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" 'sandbox_mode = "workspace-write"' "AIFHub update must restore the write-capable sandbox mode"
 assert_not_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" '^reasoning_effort = ' "AIFHub update must not restore legacy reasoning key"
 assert_not_contains "$AIFHUB_PROJECT_DIR/.codex/agents/aifhub-plan-polisher.toml" '^prompt = """' "AIFHub update must not restore legacy prompt key"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const codex=c.agents.find(a=>a.id==='codex');if(!codex||!Array.isArray(codex.installedAgentFiles)||!codex.installedAgentFiles.includes('aifhub-plan-polisher.toml'))process.exit(1);" "$AIFHUB_PROJECT_DIR/.ai-factory.json"
 
 echo "aifhub extension update smoke tests passed"

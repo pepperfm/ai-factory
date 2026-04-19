@@ -139,6 +139,51 @@ export async function installExtensionAgentFilesForAllAgents(
   return results;
 }
 
+export function collectManifestAgentFileTargets(
+  manifest?: ExtensionManifest | null,
+): Map<string, string[]> {
+  const targets = new Map<string, string[]>();
+
+  for (const agentFile of manifest?.agentFiles ?? []) {
+    const existing = targets.get(agentFile.runtime) ?? [];
+    existing.push(agentFile.target);
+    targets.set(agentFile.runtime, existing);
+  }
+
+  return targets;
+}
+
+export function mergeInstalledAgentFiles(
+  agents: AgentInstallation[],
+  agentFileInstalls: Map<string, string[]>,
+): void {
+  for (const [agentId, installedFiles] of agentFileInstalls) {
+    const agent = agents.find(candidate => candidate.id === agentId);
+    if (!agent || installedFiles.length === 0) {
+      continue;
+    }
+
+    agent.installedAgentFiles = Array.from(
+      new Set([...(agent.installedAgentFiles ?? []), ...installedFiles]),
+    ).sort();
+  }
+}
+
+export function pruneInstalledAgentFiles(
+  agents: AgentInstallation[],
+  targetsByAgent: Map<string, string[]>,
+): void {
+  for (const [agentId, targets] of targetsByAgent) {
+    const agent = agents.find(candidate => candidate.id === agentId);
+    if (!agent || targets.length === 0 || !agent.installedAgentFiles?.length) {
+      continue;
+    }
+
+    const blocked = new Set(targets);
+    agent.installedAgentFiles = agent.installedAgentFiles.filter(relPath => !blocked.has(relPath));
+  }
+}
+
 export async function removeExtensionAgentFilesForAllAgents(
   projectDir: string,
   agents: AgentInstallation[],
@@ -593,6 +638,7 @@ export async function commitResolvedExtension(
   }
 
   let assetInstall: ExtensionAssetInstallResult;
+  const oldAgentFileTargets = collectManifestAgentFileTargets(oldManifest);
 
   try {
     await commitExtensionInstall(projectDir, resolved);
@@ -620,6 +666,9 @@ export async function commitResolvedExtension(
       await removeDirectory(backupDir);
     }
   }
+
+  pruneInstalledAgentFiles(config.agents, oldAgentFileTargets);
+  mergeInstalledAgentFiles(config.agents, assetInstall.agentFileInstalls);
 
   for (const outcome of assetInstall.replacementOutcomes) {
     if (outcome.status === 'installed') {

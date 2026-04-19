@@ -618,7 +618,8 @@ else
     pass "AIFHub Codex agent file schema"
 fi
 
-if grep -qF 'model_reasoning_effort = "high"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-plan-polisher.toml" \
+if grep -qF 'model = "gpt-5.4-mini"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-plan-polisher.toml" \
+    && grep -qF 'model_reasoning_effort = "medium"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-plan-polisher.toml" \
     && grep -qF 'sandbox_mode = "workspace-write"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-plan-polisher.toml" \
     && grep -qF 'sandbox_mode = "read-only"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-review-sidecar.toml" \
     && grep -qF 'sandbox_mode = "read-only"' "$ROOT_DIR/.ai-factory/extensions/aifhub-extension/agent-files/codex/aifhub-security-sidecar.toml"; then

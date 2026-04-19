@@ -22,6 +22,7 @@ import {
   installExtensionAgentFilesForAllAgents,
   installSkillsForAllAgents,
   collectReplacedSkills,
+  mergeInstalledAgentFiles,
   refreshExtensions,
 } from '../../core/extension-ops.js';
 import {fileExists} from '../../utils/fs.js';
@@ -317,11 +318,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
       if (!manifest?.agentFiles?.length) continue;
 
       const results = await installExtensionAgentFilesForAllAgents(projectDir, config.agents, extensionDir, manifest);
-      for (const agent of config.agents) {
-        const installed = results.get(agent.id) ?? [];
-        if (installed.length === 0) continue;
-        agent.installedAgentFiles = [...new Set([...(agent.installedAgentFiles ?? []), ...installed])];
-      }
+      mergeInstalledAgentFiles(config.agents, results);
     }
 
     // Re-apply extension injections

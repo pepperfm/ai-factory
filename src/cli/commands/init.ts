@@ -12,6 +12,7 @@ import {
   assertNoAgentFileConflicts,
   collectReplacedSkills,
   installExtensionAgentFilesForAllAgents,
+  mergeInstalledAgentFiles,
 } from '../../core/extension-ops.js';
 import { loadAllExtensions } from '../../core/extensions.js';
 
@@ -207,11 +208,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
           agents: installedAgents,
         }, manifest);
         const agentFileResults = await installExtensionAgentFilesForAllAgents(projectDir, installedAgents, dir, manifest);
-        for (const agent of installedAgents) {
-          const installed = agentFileResults.get(agent.id) ?? [];
-          if (installed.length === 0) continue;
-          agent.installedAgentFiles = [...new Set([...(agent.installedAgentFiles ?? []), ...installed])];
-        }
+        mergeInstalledAgentFiles(installedAgents, agentFileResults);
       }
 
       let totalInjections = 0;

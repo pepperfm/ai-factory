@@ -4,7 +4,7 @@ description: Create or refresh an /aif-plan plan, critique it, and run one refin
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: inherit
 permissionMode: acceptEdits
-maxTurns: 12
+maxTurns: 20
 skills:
    - aif-plan
    - aif-improve

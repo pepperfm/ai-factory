@@ -713,7 +713,9 @@ export async function updateSubagents(
   const previousManaged = agentInstallation.managedAgentFiles ?? {};
   const entries: SubagentUpdateEntry[] = [];
 
-  const removedSubagents = previousInstalled.filter((subagent: string) => !availableSet.has(subagent));
+  const removedSubagents = previousInstalled.filter(
+    (subagent: string) => !availableSet.has(subagent) && Boolean(previousManaged[subagent]),
+  );
   if (removedSubagents.length > 0) {
     await removeSubagentsByName(projectDir, agentInstallation, removedSubagents);
     for (const subagent of removedSubagents) {

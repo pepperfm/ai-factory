@@ -12,7 +12,9 @@ import { removeExtensionMcpServers } from '../../core/mcp.js';
 import {
   removeSkillsForAllAgents,
   collectReplacedSkills,
+  collectManifestAgentFileTargets,
   removeExtensionAgentFilesForAllAgents,
+  pruneInstalledAgentFiles,
   restoreBaseSkills,
   stripInjectionsForAllAgents,
   removeCustomSkillsForAllAgents,
@@ -111,6 +113,7 @@ export async function extensionRemoveCommand(name: string): Promise<void> {
 
     if (manifest?.agentFiles?.length) {
       const removedAgentFiles = await removeExtensionAgentFilesForAllAgents(projectDir, config.agents, manifest);
+      pruneInstalledAgentFiles(config.agents, collectManifestAgentFileTargets(manifest));
       for (const [agentId, files] of removedAgentFiles) {
         if (files.length > 0) {
           console.log(chalk.green(`✓ Agent files removed for ${agentId}: ${files.join(', ')}`));
