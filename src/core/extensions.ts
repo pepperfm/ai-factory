@@ -104,7 +104,15 @@ export interface ResolveNpmCommandOptions {
   execPath?: string;
   pathEnv?: string;
   pathDelimiter?: string;
+  pathExists?: (targetPath: string) => Promise<boolean>;
 }
+
+interface ResolvedNpmCommand {
+  command: string;
+  argsPrefix: string[];
+}
+
+const npmCommandResolutionCache = new Map<string, Promise<ResolvedNpmCommand>>();
 
 function getNpmCliCandidates(execPath: string): string[] {
   const nodeDir = path.dirname(execPath);
@@ -127,7 +135,8 @@ async function findWindowsPathNpmCli(
   pathEnv: string,
   fallbackExecPath: string,
   pathDelimiter: string,
-): Promise<{ command: string; argsPrefix: string[] } | null> {
+  pathExists: (targetPath: string) => Promise<boolean>,
+): Promise<ResolvedNpmCommand | null> {
   const npmCommandPaths = pathEnv
     .split(pathDelimiter)
     .map(entry => entry.trim())
@@ -135,19 +144,19 @@ async function findWindowsPathNpmCli(
     .map(entry => path.join(entry, 'npm.cmd'));
 
   for (const npmCommandPath of npmCommandPaths) {
-    if (!await fs.pathExists(npmCommandPath)) {
+    if (!await pathExists(npmCommandPath)) {
       continue;
     }
 
     const npmRoot = path.dirname(npmCommandPath);
     const npmCliPath = path.join(npmRoot, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 
-    if (!await fs.pathExists(npmCliPath)) {
+    if (!await pathExists(npmCliPath)) {
       continue;
     }
 
     const bundledNodePath = path.join(npmRoot, 'node.exe');
-    const command = await fs.pathExists(bundledNodePath) ? bundledNodePath : fallbackExecPath;
+    const command = await pathExists(bundledNodePath) ? bundledNodePath : fallbackExecPath;
 
     logExtension('debug', '[FIX] Resolved Windows npm-cli.js from PATH', {
       npmCliPath,
@@ -164,14 +173,29 @@ async function findWindowsPathNpmCli(
   return null;
 }
 
-export async function resolveNpmCommand(options: ResolveNpmCommandOptions = {}): Promise<{ command: string; argsPrefix: string[] }> {
-  const platform = options.platform ?? process.platform;
-  const execPath = options.execPath ?? process.execPath;
-  const pathEnv = options.pathEnv ?? process.env.PATH ?? '';
-  const pathDelimiter = getPathDelimiter(platform, options.pathDelimiter);
+function getNpmCommandResolutionCacheKey(
+  platform: NodeJS.Platform,
+  execPath: string,
+  pathEnv: string,
+  pathDelimiter: string,
+  pathExists?: ResolveNpmCommandOptions['pathExists'],
+): string | null {
+  if (pathExists) {
+    return null;
+  }
 
+  return JSON.stringify([platform, execPath, pathEnv, pathDelimiter]);
+}
+
+async function resolveNpmCommandUncached(
+  platform: NodeJS.Platform,
+  execPath: string,
+  pathEnv: string,
+  pathDelimiter: string,
+  pathExists: (targetPath: string) => Promise<boolean>,
+): Promise<ResolvedNpmCommand> {
   for (const candidate of new Set(getNpmCliCandidates(execPath))) {
-    if (await fs.pathExists(candidate)) {
+    if (await pathExists(candidate)) {
       return {
         command: execPath,
         argsPrefix: [candidate],
@@ -184,7 +208,7 @@ export async function resolveNpmCommand(options: ResolveNpmCommandOptions = {}):
     logExtension('debug', '[FIX] Resolving Windows npm-cli.js from PATH', {
       pathDelimiter,
     });
-    const resolvedFromPath = await findWindowsPathNpmCli(pathEnv, execPath, pathDelimiter);
+    const resolvedFromPath = await findWindowsPathNpmCli(pathEnv, execPath, pathDelimiter, pathExists);
     if (resolvedFromPath) {
       return resolvedFromPath;
     }
@@ -198,6 +222,27 @@ export async function resolveNpmCommand(options: ResolveNpmCommandOptions = {}):
     command: 'npm',
     argsPrefix: [],
   };
+}
+
+export async function resolveNpmCommand(options: ResolveNpmCommandOptions = {}): Promise<ResolvedNpmCommand> {
+  const platform = options.platform ?? process.platform;
+  const execPath = options.execPath ?? process.execPath;
+  const pathEnv = options.pathEnv ?? process.env.PATH ?? '';
+  const pathDelimiter = getPathDelimiter(platform, options.pathDelimiter);
+  const pathExists = options.pathExists ?? fs.pathExists;
+  const cacheKey = getNpmCommandResolutionCacheKey(platform, execPath, pathEnv, pathDelimiter, options.pathExists);
+
+  if (!cacheKey) {
+    return resolveNpmCommandUncached(platform, execPath, pathEnv, pathDelimiter, pathExists);
+  }
+
+  let cachedResolution = npmCommandResolutionCache.get(cacheKey);
+  if (!cachedResolution) {
+    cachedResolution = resolveNpmCommandUncached(platform, execPath, pathEnv, pathDelimiter, pathExists);
+    npmCommandResolutionCache.set(cacheKey, cachedResolution);
+  }
+
+  return cachedResolution;
 }
 
 function isValidVersionString(version: string): boolean {
@@ -888,6 +933,11 @@ async function resolveFromNpm(projectDir: string, packageName: string): Promise<
   await ensureDir(tmpDir);
 
   try {
+    logExtension('debug', '[FIX] Starting npm pack for extension source', {
+      packageName,
+      command: npmRunner.command,
+      argsPrefix: npmRunner.argsPrefix,
+    });
     execFileSync(
       npmRunner.command,
       [...npmRunner.argsPrefix, 'pack', packageName, '--pack-destination', tmpDir],
@@ -896,7 +946,11 @@ async function resolveFromNpm(projectDir: string, packageName: string): Promise<
   } catch (error) {
     await removeDirectory(tmpDir);
     if (isMissingCommandError(error)) {
-      throw new Error('npm is required to install npm-based extensions but was not found in PATH.');
+      if (npmRunner.argsPrefix.length > 0) {
+        throw new Error('A safe npm entrypoint was resolved, but the npm command could not be started. Reinstall Node.js/npm and rerun with LOG_LEVEL=debug to inspect the resolved command.');
+      }
+
+      throw new Error('npm is required to install npm-based extensions but was not found in PATH. Rerun with LOG_LEVEL=debug for resolver details.');
     }
     throw error;
   }
