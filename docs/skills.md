@@ -2,7 +2,7 @@
 
 # Core Skills
 
-**Config-aware skills read `.ai-factory/config.yaml` at startup** to resolve paths, language settings, workflow preferences, and rules hierarchy. The current config-aware set is `/aif`, `/aif-plan`, `/aif-implement`, `/aif-verify`, `/aif-commit`, `/aif-review`, `/aif-roadmap`, `/aif-explore`, `/aif-loop`, `/aif-rules`, `/aif-architecture`, `/aif-docs`, `/aif-fix`, `/aif-improve`, `/aif-evolve`, `/aif-reference`, `/aif-security-checklist`, and `/aif-qa`.
+**Config-aware skills read `.ai-factory/config.yaml` at startup** to resolve paths, language settings, workflow preferences, and rules hierarchy. The current config-aware set is `/aif`, `/aif-plan`, `/aif-implement`, `/aif-verify`, `/aif-commit`, `/aif-review`, `/aif-rules-check`, `/aif-roadmap`, `/aif-explore`, `/aif-loop`, `/aif-rules`, `/aif-architecture`, `/aif-docs`, `/aif-fix`, `/aif-improve`, `/aif-evolve`, `/aif-reference`, `/aif-security-checklist`, and `/aif-qa`.
 
 `/aif` is also the primary writer for `config.yaml`: the initial file comes from the commented template, and setup reruns update only managed keys while preserving comments, unrelated manual edits, and `rules.<area>` entries owned by `/aif-rules`.
 
@@ -414,6 +414,22 @@ Reviews staged changes or PR diffs:
 - Checks correctness, security, performance, and maintainability
 - Adds read-only context-gate findings (architecture/roadmap/rules) to review output
 - Uses `WARN` for non-blocking context drift and `ERROR` only for explicitly blocking review criteria
+- If you only need the rules gate, use `/aif-rules-check`
+
+### `/aif-rules-check [git ref]`
+Runs a standalone read-only rules compliance gate:
+```
+/aif-rules-check
+/aif-rules-check main
+```
+- Reads `.ai-factory/config.yaml` for `paths.rules_file`, `paths.rules`, `paths.plan`, `paths.plans`, `language.ui`, `git.enabled`, `git.base_branch`, `rules.base`, and any named `rules.<area>`
+- Resolves rules with graceful fallback: if `paths.rules_file` is omitted, it defaults to `.ai-factory/RULES.md`
+- Checks staged changes, working-tree diff, or a provided git ref against the resolved rules hierarchy
+- Uses standalone verdicts: `PASS` when checked rules are satisfied, `WARN` when rules are missing/ambiguous or no changed files are available, `FAIL` only for explicit hard-rule violations tied to rule text
+- Output sections: overall verdict, files checked, gate results, blocking violations, suggested fixes, suggested rule updates
+- Remains read-only; if rules need to change, route that through `/aif-rules`
+
+- Config policy: config-aware; reads rule paths, optional active plan context, and git diff defaults from `config.yaml`
 
 ### `/aif-reference <url|path> [url2|path2] [--name <ref-name>] [--update]`
 Creates knowledge references from external sources for AI agents:

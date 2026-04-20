@@ -673,6 +673,20 @@ fi
 # ─────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────
+echo -e "\n${BOLD}=== aif-rules-check skill smoke tests ===${NC}\n"
+
+set +e
+RULES_CHECK_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-aif-rules-check.sh" 2>&1)
+RULES_CHECK_SMOKE_EXIT=$?
+set -e
+
+if [[ $RULES_CHECK_SMOKE_EXIT -eq 0 ]]; then
+    pass "aif-rules-check smoke tests"
+else
+    fail "aif-rules-check smoke tests"
+    echo "$RULES_CHECK_SMOKE_OUTPUT" | sed 's/^/      /'
+fi
+
 echo -e "\n${BOLD}=== Results ===${NC}"
 echo -e "  Total:    $TOTAL"
 echo -e "  Passed:   ${GREEN}$PASSED${NC}"

@@ -155,7 +155,7 @@ rules:
 ```
 
 **Current config-aware skills** read `config.yaml` at Step 0. This currently includes:
-- Core workflow and quality commands: `/aif`, `/aif-plan`, `/aif-implement`, `/aif-verify`, `/aif-commit`, `/aif-review`, `/aif-roadmap`, `/aif-explore`, `/aif-loop`, `/aif-rules`
+- Core workflow and quality commands: `/aif`, `/aif-plan`, `/aif-implement`, `/aif-verify`, `/aif-commit`, `/aif-review`, `/aif-rules-check`, `/aif-roadmap`, `/aif-explore`, `/aif-loop`, `/aif-rules`
 - Additional utility commands: `/aif-architecture`, `/aif-docs`, `/aif-fix`, `/aif-improve`, `/aif-evolve`, `/aif-reference`, `/aif-security-checklist`, `/aif-qa`
 
 Other skills are config-agnostic for now and rely on repository context, explicit arguments, or fixed non-configurable paths such as `skill-context`.
@@ -164,7 +164,7 @@ Current config-agnostic built-ins include `/aif-best-practices`, `/aif-build-aut
 
 **Git workflow semantics:**
 - `git.enabled: false` disables branch/worktree assumptions entirely. `/aif-plan full` still creates a rich full plan, but it stores it in `paths.plans/<slug>.md` without running git commands.
-- `git.base_branch` is the branch used for diff, review, verify, and merge guidance. Skills must not hardcode `main`.
+- `git.base_branch` is the branch used for diff, review, verify, rules-check, and merge guidance. Skills must not hardcode `main`.
 - `git.create_branches: false` keeps git awareness enabled but disables automatic branch creation. This lets teams keep full plans without forcing branch-per-feature flow.
 - `git.skip_push_after_commit: true` makes `/aif-commit` stop after local commit without showing push prompt.
 - `paths.plan` remains the default fast-plan file. If you prefer fast plans inside `paths.plans/`, change `paths.plan` manually in `config.yaml`.
@@ -329,7 +329,7 @@ For full phase contracts and stop conditions, see [Reflex Loop](loop.md).
 
 ### Artifact Ownership and Context Gates
 - Keep context artifact ownership command-scoped (roadmap by `/aif-roadmap`, rules by `/aif-rules`, architecture by `/aif-architecture`, research by `/aif-explore`).
-- Treat `/aif-commit`, `/aif-review`, and `/aif-verify` as read-only consumers of context artifacts by default.
+- Treat `/aif-rules-check`, `/aif-commit`, `/aif-review`, and `/aif-verify` as read-only consumers of context artifacts by default.
 - Use `WARN` for non-blocking gate findings (missing optional files, ambiguous mapping) and `ERROR` for blocking violations.
 
 ### Logging
