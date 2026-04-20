@@ -7,7 +7,7 @@
 **AI Factory** (v2) is an npm package + skill system that automates AI agent context setup for projects. It provides:
 
 1. **CLI tool** (`ai-factory init/update/upgrade`) — installs skills and configures MCP
-2. **Built-in skills** (24 skills, all `aif-*` prefixed) — workflow commands for spec-driven development
+2. **Built-in skills** (25 skills, all `aif-*` prefixed) — workflow commands for spec-driven development
 3. **Spec-driven workflow** — structured approach: plan → implement → commit
 4. **Multi-agent support** — 15 agents (Claude Code, Cursor, Windsurf, Roo Code, Kilo Code, Antigravity, OpenCode, Warp,
    Zencoder, Codex CLI, GitHub Copilot, Gemini CLI, Junie, Qwen Code, Universal)
@@ -43,6 +43,7 @@ ai-factory/
 │   ├── aif-review/             # Code review
 │   ├── aif-roadmap/            # Strategic project roadmap
 │   ├── aif-rules/              # Project rules and conventions
+│   ├── aif-rules-check/        # Standalone rules compliance gate
 │   ├── aif-qa/                 # QA workflow: change summary → test plan → test cases
 │   ├── aif-security-checklist/ # Security audit
 │   ├── aif-skill-generator/    # Generate new skills
@@ -102,7 +103,7 @@ Artifact writers are command-scoped to prevent ownership conflicts:
 | `.ai-factory/evolution/*` artifacts                                                           | `/aif-loop`            | loop state ownership                                                                             |
 | `paths.qa` (default: `.ai-factory/qa/<branch-slug>/`)                                         | `/aif-qa`              | change-summary, test-plan, test-cases artifacts; branch slug used as subdirectory                |
 
-Quality commands (`/aif-commit`, `/aif-review`, `/aif-verify`) are read-only for context artifacts by default.
+Quality commands (`/aif-rules-check`, `/aif-commit`, `/aif-review`, `/aif-verify`) are read-only for context artifacts by default.
 
 The locations shown in the ownership table are the default paths. `config.yaml` may relocate plan, fix, reference,
 documentation, security, evolution, and other AI Factory artifacts; ownership stays with the same command even when the path changes.
@@ -113,13 +114,15 @@ Context gate policy for quality commands:
 - Roadmap mismatch is warning-first in normal mode, blocking in strict mode when mismatch is clear.
 - Missing roadmap milestone linkage for `feat`/`fix`/`perf` is warning-first by default, even in strict verify when a
   roadmap exists.
+- `/aif-rules-check` is the standalone rules-only companion and uses `PASS` / `WARN` / `FAIL`; `/aif-commit`,
+  `/aif-review`, and `/aif-verify` keep `WARN` / `ERROR`.
 
 ### Config-Aware Skills
 
 `config.yaml` is not universal yet. The current config-aware skills are:
 
 - Core workflow and quality: `/aif`, `/aif-plan`, `/aif-implement`, `/aif-verify`, `/aif-commit`, `/aif-review`,
-  `/aif-roadmap`, `/aif-explore`, `/aif-loop`, `/aif-rules`
+  `/aif-rules-check`, `/aif-roadmap`, `/aif-explore`, `/aif-loop`, `/aif-rules`
 - Additional utility: `/aif-architecture`, `/aif-docs`, `/aif-fix`, `/aif-improve`, `/aif-evolve`, `/aif-reference`,
   `/aif-security-checklist`, `/aif-qa`
 
@@ -193,6 +196,23 @@ No `area:` prefix → append/update project-wide axioms in configured `paths.rul
     ↓
 Workflow skills resolve conventions with the same hierarchy:
 `rules.<area>` → `rules/base.md` → `paths.rules_file`
+
+/aif-rules-check [git ref]
+    ↓
+Reads resolved rules hierarchy from `config.yaml` with fallback to `.ai-factory/RULES.md`
+    ↓
+Collects changed files from staged diff, working tree, or `<git ref>...HEAD`
+    ↓
+Optionally reads the active plan only to disambiguate scope/area relevance
+    ↓
+Evaluates rules in read-only mode
+    ↓
+Reports standalone verdict:
+    - PASS → applicable rules checked and no clear violations found
+    - WARN → missing/ambiguous rules or no changed files
+    - FAIL → explicit hard-rule violation tied to diff evidence
+    ↓
+Suggests `/aif-rules` when rules need to be added or clarified
 
 /aif-roadmap [vision or requirements]
     ↓

@@ -116,11 +116,14 @@ echo "claude init smoke tests passed"
 FLAT_PROJECT_DIR="$TMPDIR/init-smoke-antigravity"
 mkdir -p "$FLAT_PROJECT_DIR"
 
-(cd "$FLAT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents antigravity --skills aif > "$TMPDIR/init-antigravity.log" 2>&1)
+(cd "$FLAT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents antigravity --skills aif,aif-rules-check > "$TMPDIR/init-antigravity.log" 2>&1)
 
 assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/aif.md" "antigravity init must install aif as a flat workflow"
+assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/aif-rules-check.md" "antigravity init must install aif-rules-check as a flat workflow"
 assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/references/update-config.mjs" "flat workflow installs must include the config helper in references/"
 assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/references/config-template.yaml" "flat workflow installs must include config template references"
+assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/references/RULES-CHECK-CONTRACT.md" "flat workflow installs must include rules-check references"
+assert_not_exists "$FLAT_PROJECT_DIR/.agent/skills/aif-rules-check" "workflow-classified skills must not remain under .agent/skills/"
 
 echo "flat workflow init smoke tests passed"
 
