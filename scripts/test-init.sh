@@ -342,3 +342,46 @@ fi
 assert_contains "$TMPDIR/init-ext-conflict.log" "already owned by AI Factory bundled Claude agent files" "bundled Claude target collision must be rejected with a clear message"
 
 echo "extension agent file conflict smoke tests passed"
+
+# -------------------------------------------------------------------
+# Unsafe managed agent file path smoke: deselecting an agent must not
+# delete files outside the runtime-local agents directory.
+# -------------------------------------------------------------------
+
+UNSAFE_PROJECT_DIR="$TMPDIR/init-smoke-unsafe-agent-file-removal"
+mkdir -p "$UNSAFE_PROJECT_DIR"
+
+cat > "$UNSAFE_PROJECT_DIR/.ai-factory.json" << 'EOF'
+{
+  "version": "2.4.0",
+  "agents": [
+    {
+      "id": "codex",
+      "skillsDir": ".codex/skills",
+      "agentsDir": ".codex/agents",
+      "installedSkills": ["aif"],
+      "installedAgentFiles": ["../../SHOULD_NOT_DELETE.md"],
+      "managedAgentFiles": {},
+      "agentFileSources": {},
+      "mcp": {
+        "github": false,
+        "filesystem": false,
+        "postgres": false,
+        "chromeDevtools": false,
+        "playwright": false
+      }
+    }
+  ],
+  "extensions": []
+}
+EOF
+
+cat > "$UNSAFE_PROJECT_DIR/SHOULD_NOT_DELETE.md" << 'EOF'
+keep-me
+EOF
+
+(cd "$UNSAFE_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude --skills aif > "$TMPDIR/init-unsafe-remove.log" 2>&1)
+assert_exists "$UNSAFE_PROJECT_DIR/SHOULD_NOT_DELETE.md" "init deselection must not delete files outside the agents directory"
+assert_contains "$TMPDIR/init-unsafe-remove.log" 'Skipping unsafe managed agent file path "\.\./\.\./SHOULD_NOT_DELETE\.md"' "init must warn when config contains an unsafe managed agent file path"
+
+echo "unsafe managed agent file removal smoke tests passed"

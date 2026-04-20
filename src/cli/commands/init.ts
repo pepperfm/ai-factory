@@ -9,6 +9,7 @@ import {
   installSubagents,
   getAvailableSkills,
   rebuildManagedAgentFilesForAgents,
+  resolveInstalledAgentFileTargetPath,
 } from '../../core/installer.js';
 import { saveConfig, configExists, loadConfig, getCurrentVersion, type AgentInstallation } from '../../core/config.js';
 import { configureMcp, getMcpInstructions } from '../../core/mcp.js';
@@ -102,7 +103,15 @@ async function removeAgentSetup(projectDir: string, agent: AgentInstallation): P
   if (agentsDir) {
     const managedFiles = agent.installedAgentFiles ?? [];
     for (const relPath of managedFiles) {
-      await removeFile(path.join(projectDir, agentsDir, relPath));
+      try {
+        await removeFile(resolveInstalledAgentFileTargetPath(projectDir, agentsDir, relPath));
+      } catch (error) {
+        console.log(
+          chalk.yellow(
+            `Warning: Skipping unsafe managed agent file path "${relPath}" while removing ${agent.id}: ${(error as Error).message}`,
+          ),
+        );
+      }
     }
   }
 

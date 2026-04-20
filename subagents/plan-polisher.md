@@ -22,7 +22,7 @@ Purpose:
 Repo-specific rules:
 - You are a normal subagent. Never invoke nested subagents or agent teams.
 - When injected `/aif-plan` or `/aif-improve` instructions mention `Task(...)` or other delegated exploration, replace that with a local two-pass protocol built from direct `Read`, `Glob`, `Grep`, and `Bash` work.
-- Do not implement code. Your write scope is limited to `.ai-factory/PLAN.md`, `.ai-factory/plans/*.md`, and related plan artifacts.
+- Do not implement code. Your write scope is limited to the resolved planning paths from `.ai-factory/config.yaml`: the configured `paths.plan`, files under the configured `paths.plans`, and related plan artifacts under those resolved plan locations. If config is missing, use the documented defaults.
 - Respect `.ai-factory/DESCRIPTION.md`, `.ai-factory/ARCHITECTURE.md`, `.ai-factory/RESEARCH.md`, roadmap linkage, and skill-context rules exactly as the injected skills define them.
 
 ## Handoff Integration
@@ -47,6 +47,7 @@ Bash: printenv HANDOFF_TASK_ID || true
 
 **When `HANDOFF_MODE` is NOT `1`** (manual session):
 - If polishing an existing plan that already has a `<!-- handoff:task:<id> -->` annotation, preserve it on the first line when rewriting the file.
+- If the caller explicitly passed `HANDOFF_TASK_ID` in manual mode, treat it as the task ID extracted from the existing annotation and preserve that annotation when rewriting the plan.
 - Do NOT insert new annotations — only the autonomous agent creates them.
 
 Note: The caller (plan-coordinator) handles status sync (`planning` → `plan_ready`) and `handoff_push_plan`. This agent only handles the annotation.
@@ -89,12 +90,15 @@ Branch creation (full mode only):
 - If `git.enabled = false` or `git.create_branches = false` → do NOT create or switch branches. Derive a slug from the request and use that slug for the full-mode plan filename under the resolved plans directory.
 - Treat the current branch as an AI Factory feature branch only if it starts with the configured `git.branch_prefix`. If `git.branch_prefix` is missing, use the default `feature/` prefix. Do not infer feature-branch status merely from the presence of `/` in the branch name.
 - If the current branch is already an AI Factory feature branch by that prefix rule → use it as-is, do not create a new one.
+- Before switching branches, check for uncommitted changes. Do not discard, stash, or overwrite them. If switching would be unsafe, keep the current branch, record the blocker in the plan, and continue only if writing the plan on the current branch is safe.
 - If the current branch is the configured base branch, `main`, `master`, or any other non-feature branch → derive a branch name from the request using the `/aif-plan` naming convention (`<type>/<short-description>`, lowercase, hyphens, max 50 chars) and create it from the configured base branch:
   ```
   git checkout <configured-base-branch>
   git pull origin <configured-base-branch>
   git checkout -b <branch-name>
   ```
+- If `origin` is unavailable or the remote base branch cannot be reached, skip `git pull` and continue from the local base branch with a note in the plan.
+- If checking out the configured base branch fails, do not invent fallback commands. Record the blocker and continue on the current branch only when that is safe.
 - If branch creation fails (e.g. branch already exists), try `git checkout <branch-name>` instead.
 - The branch name is then used for the plan file path below.
 
@@ -148,4 +152,3 @@ Output:
 - Return a concise summary only.
 - Include: final plan path, mode used, and final critique status.
 - Include: `needs_further_refinement: yes/no` with a list of remaining material issues (if any) so the caller knows whether to launch another plan-polisher.
-

@@ -613,10 +613,45 @@ else
     fail "plan-polisher config-aware path/branch-prefix contract missing"
 fi
 
+if grep -qF 'Your write scope is limited to the resolved planning paths from `.ai-factory/config.yaml`:' "$ROOT_DIR/subagents/plan-polisher.md" \
+    && grep -qF 'the configured `paths.plan`' "$ROOT_DIR/subagents/plan-polisher.md" \
+    && grep -qF 'files under the configured `paths.plans`' "$ROOT_DIR/subagents/plan-polisher.md"; then
+    pass "plan-polisher write scope follows resolved config paths"
+else
+    fail "plan-polisher write scope must follow resolved config paths"
+fi
+
+if grep -qF 'Your write scope is limited to `.ai-factory/PLAN.md`, `.ai-factory/plans/*.md`' "$ROOT_DIR/subagents/plan-polisher.md"; then
+    fail "plan-polisher must not hardcode write scope to default .ai-factory paths"
+else
+    pass "plan-polisher avoids hardcoded default write scope"
+fi
+
 if grep -qF 'contains `/` in the name' "$ROOT_DIR/subagents/plan-polisher.md"; then
     fail "plan-polisher must not use slash-presence branch heuristic"
 else
     pass "plan-polisher avoids slash-presence branch heuristic"
+fi
+
+if grep -qF 'Do not discard, stash, or overwrite them.' "$ROOT_DIR/subagents/plan-polisher.md" \
+    && grep -qF 'If `origin` is unavailable or the remote base branch cannot be reached, skip `git pull`' "$ROOT_DIR/subagents/plan-polisher.md"; then
+    pass "plan-polisher branch safety fallback contract"
+else
+    fail "plan-polisher branch safety fallback contract missing"
+fi
+
+if grep -qF 'If `git.enabled = false` or `git.create_branches = false` → do NOT create or switch branches.' "$ROOT_DIR/subagents/plan-polisher.md"; then
+    pass "plan-polisher disables branch creation when config says so"
+else
+    fail "plan-polisher must disable branch creation when config says so"
+fi
+
+if grep -qF 'HANDOFF_TASK_ID: <value from plan annotation>' "$ROOT_DIR/subagents/plan-coordinator.md" \
+    && grep -qF 'Do this even though `HANDOFF_MODE` stays unset or non-`1` in manual sessions.' "$ROOT_DIR/subagents/plan-coordinator.md" \
+    && grep -qF '`HANDOFF_TASK_ID` by itself when manual mode is refining a plan that already has a Handoff annotation' "$ROOT_DIR/subagents/plan-coordinator.md"; then
+    pass "plan-coordinator preserves manual handoff task ids"
+else
+    fail "plan-coordinator manual handoff dispatch contract missing"
 fi
 
 if grep -qF 'bounded helper workers' "$ROOT_DIR/docs/configuration.md" \

@@ -342,6 +342,37 @@ node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[
 echo "legacy claude migration smoke tests passed"
 
 # -------------------------------------------------------------------
+# Legacy extension agent file migration smoke: update should backfill
+# agentFileSources for pre-metadata configs without dropping tracked
+# extension-managed files.
+# -------------------------------------------------------------------
+
+LEGACY_EXTENSION_DIR="$TMPDIR/legacy-extension-agent-files"
+LEGACY_EXTENSION_PROJECT_DIR="$TMPDIR/update-smoke-legacy-extension-agent-files"
+create_bounded_helper_extension_fixture "$LEGACY_EXTENSION_DIR"
+mkdir -p "$LEGACY_EXTENSION_PROJECT_DIR"
+
+(cd "$LEGACY_EXTENSION_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents claude,codex --skills aif,aif-improve > "$TMPDIR/update-legacy-extension-base.log" 2>&1)
+(cd "$LEGACY_EXTENSION_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$LEGACY_EXTENSION_DIR" > "$TMPDIR/update-legacy-extension-add.log" 2>&1)
+
+node - "$LEGACY_EXTENSION_PROJECT_DIR/.ai-factory.json" <<'EOF'
+const fs = require('fs');
+const configPath = process.argv[2];
+const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+const codex = cfg.agents.find(agent => agent.id === 'codex');
+if (!codex) process.exit(1);
+delete codex.agentFileSources;
+fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
+EOF
+
+LEGACY_EXTENSION_OUTPUT="$TMPDIR/update-legacy-extension.log"
+(cd "$LEGACY_EXTENSION_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$LEGACY_EXTENSION_OUTPUT" 2>&1)
+assert_contains "$LEGACY_EXTENSION_OUTPUT" "bounded-plan-polisher\\.toml \(extension refresh\)" "legacy extension agent file config must still refresh managed extension files"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const codex=c.agents.find(a=>a.id==='codex');if(!codex)process.exit(1);if(!Array.isArray(codex.installedAgentFiles)||!codex.installedAgentFiles.includes('bounded-plan-polisher.toml'))process.exit(1);if(!codex.managedAgentFiles||!codex.managedAgentFiles['bounded-plan-polisher.toml'])process.exit(1);if(!codex.agentFileSources||codex.agentFileSources['bounded-plan-polisher.toml']?.kind!=='extension'||codex.agentFileSources['bounded-plan-polisher.toml']?.extensionName!=='aif-ext-bounded-helpers')process.exit(1);" "$LEGACY_EXTENSION_PROJECT_DIR/.ai-factory.json"
+
+echo "legacy extension agent file migration smoke tests passed"
+
+# -------------------------------------------------------------------
 # Bounded helper extension update smoke: update should re-apply the
 # canonical /aif-improve injection contract and heal bounded Codex
 # helper drift.
@@ -381,6 +412,12 @@ rm "$BOUNDED_PROJECT_DIR/.ai-factory/extensions/aif-ext-bounded-helpers/extensio
 BROKEN_BOUNDED_UPDATE_OUTPUT="$TMPDIR/update-bounded-broken-manifest.log"
 (cd "$BOUNDED_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$BROKEN_BOUNDED_UPDATE_OUTPUT" 2>&1)
 assert_contains "$BROKEN_BOUNDED_UPDATE_OUTPUT" 'agent file manifest missing — preserving tracked agent file state' "ordinary update must warn when extension manifest is missing"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const codex=c.agents.find(a=>a.id==='codex');if(!codex)process.exit(1);if(!Array.isArray(codex.installedAgentFiles)||!codex.installedAgentFiles.includes('bounded-plan-polisher.toml'))process.exit(1);if(!codex.managedAgentFiles||!codex.managedAgentFiles['bounded-plan-polisher.toml'])process.exit(1);if(!codex.agentFileSources||codex.agentFileSources['bounded-plan-polisher.toml']?.extensionName!=='aif-ext-bounded-helpers')process.exit(1);" "$BOUNDED_PROJECT_DIR/.ai-factory.json"
+
+printf '{ invalid json' > "$BOUNDED_PROJECT_DIR/.ai-factory/extensions/aif-ext-bounded-helpers/extension.json"
+MALFORMED_BOUNDED_UPDATE_OUTPUT="$TMPDIR/update-bounded-malformed-manifest.log"
+(cd "$BOUNDED_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$MALFORMED_BOUNDED_UPDATE_OUTPUT" 2>&1)
+assert_contains "$MALFORMED_BOUNDED_UPDATE_OUTPUT" 'agent file manifest missing' "ordinary update must warn when extension manifest is invalid"
 node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const codex=c.agents.find(a=>a.id==='codex');if(!codex)process.exit(1);if(!Array.isArray(codex.installedAgentFiles)||!codex.installedAgentFiles.includes('bounded-plan-polisher.toml'))process.exit(1);if(!codex.managedAgentFiles||!codex.managedAgentFiles['bounded-plan-polisher.toml'])process.exit(1);if(!codex.agentFileSources||codex.agentFileSources['bounded-plan-polisher.toml']?.extensionName!=='aif-ext-bounded-helpers')process.exit(1);" "$BOUNDED_PROJECT_DIR/.ai-factory.json"
 
 echo "bounded helper extension update smoke tests passed"

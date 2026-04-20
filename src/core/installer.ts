@@ -219,6 +219,17 @@ function resolveAgentFilePaths(
   };
 }
 
+export function resolveInstalledAgentFileTargetPath(
+  projectDir: string,
+  agentsDir: string,
+  relPath: string,
+): string {
+  const targetRoot = path.join(projectDir, agentsDir);
+  const targetFile = path.join(targetRoot, relPath);
+  ensureTargetWithinRoot(targetRoot, targetFile);
+  return targetFile;
+}
+
 function getBundledAgentFilesSourceDir(agentId: string): string | null {
   return agentId === 'claude' ? getSubagentsDir() : null;
 }
