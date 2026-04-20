@@ -39,10 +39,11 @@ If config is missing or partial, use defaults:
 - `paths.plan`: `.ai-factory/PLAN.md`
 - `paths.plans`: `.ai-factory/plans/`
 - `git.enabled`: `true`
-- `git.base_branch`: `main`
+- `git.base_branch`: detect the repo default branch from git metadata; fall back to `main` only when detection is unavailable
 - `rules.base`: `.ai-factory/rules/base.md`
 
 If `paths.rules_file` is missing from config, default to `.ai-factory/RULES.md` instead of treating config as incomplete.
+If `git.base_branch` is missing from config, resolve the repository default branch from git metadata when possible; use `main` only as the final fallback.
 
 ### Step 1.1: Load Skill Context
 

@@ -48,6 +48,18 @@ else
     fail "SKILL.md must document fallback to .ai-factory/RULES.md"
 fi
 
+if grep -Fq 'If `git.base_branch` is missing from config, resolve the repository default branch from git metadata when possible; use `main` only as the final fallback.' "$SKILL_DIR/SKILL.md"; then
+    pass "SKILL.md documents git.base_branch auto-detect fallback"
+else
+    fail "SKILL.md must document git.base_branch auto-detect fallback"
+fi
+
+if grep -Fqx -- '- `git.base_branch`: `main`' "$SKILL_DIR/SKILL.md"; then
+    fail "SKILL.md must not hardcode git.base_branch to main"
+else
+    pass "SKILL.md no longer hardcodes git.base_branch to main"
+fi
+
 if grep -Fq 'Optional plan context: use the active plan file only when it helps interpret scope or area relevance; absence of a plan is never a failure.' "$SKILL_DIR/SKILL.md"; then
     pass "SKILL.md documents optional plan context"
 else
