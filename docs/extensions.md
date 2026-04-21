@@ -1,4 +1,4 @@
-﻿[← Security](security.md) · [Back to README](../README.md) · [Configuration →](configuration.md)
+[← Security](security.md) · [Back to README](../README.md) · [Configuration →](configuration.md)
 
 # Extensions
 
@@ -60,10 +60,10 @@ Running `ai-factory update`:
    - GitHub repos: fetches `extension.json` via GitHub API (faster than cloning)
    - Local paths: requires `--force` to refresh
    - Extensions with unchanged versions are skipped
-3. **Base skill update** - updates installed base skills, reports per-agent status (`changed`, `unchanged`, `skipped`, `removed`)
-4. **Reinstall replacement skills** - re-installs skills from extension manifests
-5. **Reinstall tracked extension agent files** - refreshes extension-managed runtime files and reports them in the per-agent agent-file section
-6. **Re-apply injections** - re-applies all extension injections automatically
+3. **Base skill update** — updates installed base skills, reports per-agent status (`changed`, `unchanged`, `skipped`, `removed`)
+4. **Reinstall replacement skills** — re-installs skills from extension manifests
+5. **Reinstall tracked extension agent files** — refreshes extension-managed runtime files and reports them in the per-agent agent-file section
+6. **Re-apply injections** — re-applies all extension injections automatically
 
 `ai-factory update --force` forces a clean reinstall of base skills AND forces extension refresh regardless of version changes.
 

@@ -3,8 +3,8 @@ import path from 'path';
 import {realpathSync} from 'fs';
 import {execSync} from 'child_process';
 import inquirer from 'inquirer';
-import {getCurrentVersion, loadConfig, saveConfig} from '../../core/config.js';
-import {compareExtensionVersions, getExtensionsDir, getNpmVersionCheckResult, loadExtensionManifest} from '../../core/extensions.js';
+import {getCurrentVersion, hydrateAgentFileSources, loadConfig, saveConfig} from '../../core/config.js';
+import {compareExtensionVersions, getExtensionsDir, getNpmVersionCheckResult, loadAllExtensions} from '../../core/extensions.js';
 import { hydrateProjectAgentRegistry } from '../../core/agents.js';
 import {
   buildExtensionAgentFileSources,
@@ -235,6 +235,16 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     const availableSkills = await getAvailableSkills();
     const skillEntriesByAgent = new Map<string, SkillUpdateEntry[]>();
     const subagentEntriesByAgent = new Map<string, SubagentUpdateEntry[]>();
+    const installedExtensions = extensions.length > 0
+      ? await loadAllExtensions(projectDir, extensions.map(extension => extension.name))
+      : [];
+    const extensionManifests = new Map(
+      installedExtensions.map(({ manifest }) => [manifest.name, manifest]),
+    );
+
+    await hydrateAgentFileSources(projectDir, config, {
+      installedExtensions,
+    });
 
     const allReplacedSkills = collectReplacedSkills(extensions);
 
@@ -262,7 +272,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     for (const ext of extensions) {
       if (!ext.replacedSkills?.length) continue;
       const extensionDir = path.join(getExtensionsDir(projectDir), ext.name);
-      const manifest = await loadExtensionManifest(extensionDir);
+      const manifest = extensionManifests.get(ext.name);
       if (!manifest?.replaces) {
         console.log(chalk.yellow(`⚠ Extension "${ext.name}" manifest missing — restoring base skills: ${ext.replacedSkills.join(', ')}`));
         failedReplacements.push(...ext.replacedSkills);
@@ -319,7 +329,7 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     // even when the extension version itself did not change.
     for (const ext of extensions) {
       const extensionDir = path.join(getExtensionsDir(projectDir), ext.name);
-      const manifest = await loadExtensionManifest(extensionDir);
+      const manifest = extensionManifests.get(ext.name);
       if (!manifest?.agentFiles?.length) {
         const preservesTrackedAgentFiles = config.agents.some(agent =>
           Object.values(agent.agentFileSources ?? {}).some(
@@ -377,7 +387,9 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
     });
 
     config.version = currentVersion;
-    await saveConfig(projectDir, config);
+    await saveConfig(projectDir, config, {
+      installedExtensions,
+    });
 
     console.log(chalk.green('✓ Skills and agent assets updated successfully'));
     console.log(chalk.green('✓ Configuration updated'));

@@ -90,6 +90,11 @@ interface ManagedAgentFileResolution {
   state?: ManagedArtifactState;
 }
 
+type PreservableManagedAgentFileStatus =
+  | 'missing-source-metadata'
+  | 'missing-source-root'
+  | 'missing-source-file';
+
 function normalizeMarkdownForManagedHash(content: string): string {
   return content
     .replace(/\r\n/g, '\n')
@@ -403,13 +408,18 @@ async function getManagedAgentFileResolution(
   };
 }
 
-function shouldPreserveManagedStateOnMissingSource(status: ManagedAgentFileResolution['status']): boolean {
+function shouldPreserveManagedStateOnMissingSource(
+  status: ManagedAgentFileResolution['status'],
+): status is PreservableManagedAgentFileStatus {
   return status === 'missing-source-metadata'
     || status === 'missing-source-root'
     || status === 'missing-source-file';
 }
 
-function formatManagedAgentFileResolutionWarning(relPath: string, status: ManagedAgentFileResolution['status']): string {
+function formatManagedAgentFileResolutionWarning(
+  relPath: string,
+  status: PreservableManagedAgentFileStatus,
+): string {
   switch (status) {
     case 'missing-source-metadata':
       return `Warning: Managed agent file "${relPath}" has no source metadata - preserving previous hash state.`;
@@ -417,8 +427,6 @@ function formatManagedAgentFileResolutionWarning(relPath: string, status: Manage
       return `Warning: Managed agent file "${relPath}" source root is unavailable - preserving previous hash state.`;
     case 'missing-source-file':
       return `Warning: Managed agent file "${relPath}" source file is unavailable - preserving previous hash state.`;
-    default:
-      return `Warning: Managed agent file "${relPath}" could not be rebuilt - preserving previous hash state.`;
   }
 }
 

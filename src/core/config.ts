@@ -2,7 +2,7 @@ import path from 'path';
 import { createRequire } from 'module';
 import { readJsonFile, writeJsonFile, fileExists, getSubagentsDir, listFilesRecursive } from '../utils/fs.js';
 import { findAgentConfig, getAgentConfig } from './agents.js';
-import { loadAllExtensions } from './extensions.js';
+import { loadAllExtensions, type InstalledExtensionManifest } from './extensions.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -49,6 +49,11 @@ export interface AiFactoryConfig {
   version: string;
   agents: AgentInstallation[];
   extensions?: ExtensionRecord[];
+}
+
+interface SaveConfigOptions {
+  hydrateAgentFileSources?: boolean;
+  installedExtensions?: InstalledExtensionManifest[];
 }
 
 interface LegacyAiFactoryConfig {
@@ -163,6 +168,24 @@ function normalizeAgentFileSources(raw: unknown): Record<string, AgentFileSource
   return result;
 }
 
+function buildExtensionAgentFileSourceIndex(
+  installedExtensions: InstalledExtensionManifest[],
+): Map<string, AgentFileSource> {
+  const extensionSourceIndex = new Map<string, AgentFileSource>();
+
+  for (const { manifest } of installedExtensions) {
+    for (const agentFile of manifest.agentFiles ?? []) {
+      extensionSourceIndex.set(`${agentFile.runtime}::${agentFile.target}`, {
+        kind: 'extension',
+        sourcePath: agentFile.source,
+        extensionName: manifest.name,
+      });
+    }
+  }
+
+  return extensionSourceIndex;
+}
+
 let bundledClaudeAgentFilesCache: Set<string> | null = null;
 
 async function getBundledAgentFileTargets(agentId: string): Promise<Set<string>> {
@@ -170,6 +193,8 @@ async function getBundledAgentFileTargets(agentId: string): Promise<Set<string>>
     return new Set<string>();
   }
 
+  // Package-bundled Claude agent files are static for the lifetime of a single
+  // CLI process, so a module-level cache avoids repeated directory walks.
   if (!bundledClaudeAgentFilesCache) {
     const files = await listFilesRecursive(getSubagentsDir());
     bundledClaudeAgentFilesCache = new Set(
@@ -188,20 +213,7 @@ export async function loadConfig(projectDir: string): Promise<AiFactoryConfig | 
   }
 
   if (Array.isArray(raw.agents)) {
-    const extensionSourceIndex = new Map<string, AgentFileSource>();
     const rawExtensions = Array.isArray(raw.extensions) ? raw.extensions : [];
-    if (rawExtensions.length > 0) {
-      const installedExtensions = await loadAllExtensions(projectDir, rawExtensions.map(extension => extension.name));
-      for (const { manifest } of installedExtensions) {
-        for (const agentFile of manifest.agentFiles ?? []) {
-          extensionSourceIndex.set(`${agentFile.runtime}::${agentFile.target}`, {
-            kind: 'extension',
-            sourcePath: agentFile.source,
-            extensionName: manifest.name,
-          });
-        }
-      }
-    }
 
     const normalizedAgents = raw.agents.map(agent => {
       const legacyAgent = agent as unknown as LegacyAgentInstallationShape;
@@ -232,12 +244,6 @@ export async function loadConfig(projectDir: string): Promise<AiFactoryConfig | 
         const existingSource = agentFileSources[relPath];
         if (existingSource) {
           filteredAgentFileSources[relPath] = existingSource;
-          continue;
-        }
-
-        const extensionSource = extensionSourceIndex.get(`${agent.id}::${relPath}`);
-        if (extensionSource) {
-          filteredAgentFileSources[relPath] = extensionSource;
         }
       }
 
@@ -253,23 +259,6 @@ export async function loadConfig(projectDir: string): Promise<AiFactoryConfig | 
         mcp: normalizeMcp(legacyAgent.mcp),
       };
     });
-
-    for (const agent of normalizedAgents) {
-      if (!agent.installedAgentFiles?.length) {
-        continue;
-      }
-
-      const bundledTargets = await getBundledAgentFileTargets(agent.id);
-      for (const relPath of agent.installedAgentFiles) {
-        if (!agent.agentFileSources?.[relPath] && bundledTargets.has(relPath)) {
-          agent.agentFileSources ??= {};
-          agent.agentFileSources[relPath] = {
-            kind: 'bundled',
-            sourcePath: relPath,
-          };
-        }
-      }
-    }
 
     return {
       version: raw.version ?? CURRENT_VERSION,
@@ -293,8 +282,73 @@ export async function loadConfig(projectDir: string): Promise<AiFactoryConfig | 
   };
 }
 
-export async function saveConfig(projectDir: string, config: AiFactoryConfig): Promise<void> {
+export async function hydrateAgentFileSources(
+  projectDir: string,
+  config: AiFactoryConfig,
+  options: { installedExtensions?: InstalledExtensionManifest[] } = {},
+): Promise<void> {
+  if (!config.agents.length) {
+    return;
+  }
+
+  const extensions = config.extensions ?? [];
+  const installedExtensions = options.installedExtensions
+    ?? (extensions.length > 0
+      ? await loadAllExtensions(projectDir, extensions.map(extension => extension.name))
+      : []);
+  const extensionSourceIndex = buildExtensionAgentFileSourceIndex(installedExtensions);
+
+  for (const agent of config.agents) {
+    const installedAgentFiles = agent.installedAgentFiles ?? [];
+    if (installedAgentFiles.length === 0) {
+      agent.agentFileSources = {};
+      continue;
+    }
+
+    const installedSet = new Set(installedAgentFiles);
+    const normalizedSources = normalizeAgentFileSources(agent.agentFileSources);
+    const hydratedSources: Record<string, AgentFileSource> = {};
+
+    for (const relPath of installedAgentFiles) {
+      const existingSource = normalizedSources[relPath];
+      if (existingSource) {
+        hydratedSources[relPath] = existingSource;
+        continue;
+      }
+
+      const extensionSource = extensionSourceIndex.get(`${agent.id}::${relPath}`);
+      if (extensionSource) {
+        hydratedSources[relPath] = extensionSource;
+      }
+    }
+
+    const bundledTargets = await getBundledAgentFileTargets(agent.id);
+    for (const relPath of installedAgentFiles) {
+      if (!hydratedSources[relPath] && bundledTargets.has(relPath)) {
+        hydratedSources[relPath] = {
+          kind: 'bundled',
+          sourcePath: relPath,
+        };
+      }
+    }
+
+    agent.agentFileSources = Object.fromEntries(
+      Object.entries(hydratedSources).filter(([relPath]) => installedSet.has(relPath)),
+    );
+  }
+}
+
+export async function saveConfig(
+  projectDir: string,
+  config: AiFactoryConfig,
+  options: SaveConfigOptions = {},
+): Promise<void> {
   const configPath = getConfigPath(projectDir);
+  if (options.hydrateAgentFileSources ?? true) {
+    await hydrateAgentFileSources(projectDir, config, {
+      installedExtensions: options.installedExtensions,
+    });
+  }
   await writeJsonFile(configPath, config);
 }
 

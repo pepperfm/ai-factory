@@ -1,4 +1,4 @@
-﻿[← Reflex Loop](loop.md) · [Back to README](../README.md) · [Core Skills →](skills.md)
+[← Reflex Loop](loop.md) · [Back to README](../README.md) · [Core Skills →](skills.md)
 
 # Subagents
 
@@ -6,9 +6,9 @@
 
 ## Migration Note
 
-If you have an existing AI Factory project that was initialized before subagent support was added, running `ai-factory update` will automatically install all bundled subagents into `.claude/agents/`. This is intentional migration behavior - `loadConfig()` reads legacy Claude-only `subagentsDir`, `installedSubagents`, and `managedSubagents`, but persists the universal `agentsDir`, `installedAgentFiles`, `managedAgentFiles`, and `agentFileSources` fields on the next save. No opt-in is required; the bundled subagents remain part of the standard AI Factory package for Claude Code.
+If you have an existing AI Factory project that was initialized before subagent support was added, running `ai-factory update` will automatically install all bundled subagents into `.claude/agents/`. This is intentional migration behavior — `loadConfig()` reads legacy Claude-only `subagentsDir`, `installedSubagents`, and `managedSubagents`, but persists the universal `agentsDir`, `installedAgentFiles`, `managedAgentFiles`, and `agentFileSources` fields on the next save. No opt-in is required; the bundled subagents remain part of the standard AI Factory package for Claude Code.
 
-If you already have custom agents in `.claude/agents/`, they will not be touched - AI Factory only manages files listed in `installedAgentFiles` and tracked by `managedAgentFiles` / `agentFileSources` in `.ai-factory.json`.
+If you already have custom agents in `.claude/agents/`, they will not be touched — AI Factory only manages files listed in `installedAgentFiles` and tracked by `managedAgentFiles` / `agentFileSources` in `.ai-factory.json`.
 
 ## Why This Exists
 
@@ -349,4 +349,3 @@ If we later build an agent-agnostic abstraction for role-based loop workers, thi
 - [Reflex Loop](loop.md) - the workflow these agents support
 - [Core Skills](skills.md) - slash command reference including `/aif-loop`
 - [Configuration](configuration.md) - project directories and agent config files
-

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import path from 'path';
-import { loadConfig, saveConfig, type AiFactoryConfig } from '../../core/config.js';
+import { hydrateAgentFileSources, loadConfig, saveConfig, type AiFactoryConfig } from '../../core/config.js';
 import { hydrateProjectAgentRegistry } from '../../core/agents.js';
 import {
   resolveExtension,
@@ -101,6 +101,7 @@ export async function extensionRemoveCommand(name: string): Promise<void> {
   console.log(chalk.bold.blue('\n🏭 AI Factory - Remove Extension\n'));
 
   const config = await loadHydratedExtensionConfig(projectDir);
+  await hydrateAgentFileSources(projectDir, config);
 
   const extensions = config.extensions ?? [];
   const index = extensions.findIndex(e => e.name === name);
