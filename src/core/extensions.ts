@@ -406,6 +406,11 @@ export interface ExtensionManifest {
   mcpServers?: ExtensionMcpServer[];
 }
 
+export interface InstalledExtensionManifest {
+  dir: string;
+  manifest: ExtensionManifest;
+}
+
 function isSafeRelativeAssetPath(filePath: string): boolean {
   const windowsDriveAbsolute = /^[a-zA-Z]:[\\/]/.test(filePath);
   const windowsUncAbsolute = /^(\\\\|\/\/)/.test(filePath);
@@ -531,9 +536,9 @@ export async function loadExtensionManifest(extensionDir: string): Promise<Exten
 export async function loadAllExtensions(
   projectDir: string,
   registeredNames: string[],
-): Promise<{ dir: string; manifest: ExtensionManifest }[]> {
+): Promise<InstalledExtensionManifest[]> {
   const extensionsDir = getExtensionsDir(projectDir);
-  const results: { dir: string; manifest: ExtensionManifest }[] = [];
+  const results: InstalledExtensionManifest[] = [];
 
   for (const name of registeredNames) {
     try {
