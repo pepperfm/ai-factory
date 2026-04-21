@@ -196,8 +196,8 @@ assert_not_exists "$AG_PROJECT_DIR/.agent/skills/aif-docs/references/stale.md" "
 echo "antigravity force smoke tests passed"
 
 # -------------------------------------------------------------------
-# Kilo Code workflow smoke: action skills should install as workflows
-# and no longer remain under .kilocode/skills/.
+# Kilo Code workflow smoke: workflow-classified skills should install
+# as workflows and no longer remain under .kilocode/skills/.
 # -------------------------------------------------------------------
 
 KILO_PROJECT_DIR="$TMPDIR/update-smoke-kilocode"
@@ -210,7 +210,7 @@ cat > "$KILO_PROJECT_DIR/.ai-factory.json" << 'EOF'
     {
       "id": "kilocode",
       "skillsDir": ".kilocode/skills",
-      "installedSkills": ["aif", "aif-plan", "aif-commit", "aif-docs"],
+      "installedSkills": ["aif", "aif-plan", "aif-commit", "aif-rules-check", "aif-docs"],
       "mcp": {
         "github": false,
         "filesystem": false,
@@ -232,11 +232,13 @@ assert_contains "$KILO_OUTPUT" "\[kilocode\] Status:" "kilocode status section m
 assert_exists "$KILO_PROJECT_DIR/.kilocode/workflows/aif.md" "aif workflow must be installed for Kilo Code"
 assert_exists "$KILO_PROJECT_DIR/.kilocode/workflows/aif-plan.md" "aif-plan workflow must be installed for Kilo Code"
 assert_exists "$KILO_PROJECT_DIR/.kilocode/workflows/aif-commit.md" "aif-commit workflow must be installed for Kilo Code"
+assert_exists "$KILO_PROJECT_DIR/.kilocode/workflows/aif-rules-check.md" "aif-rules-check workflow must be installed for Kilo Code"
 assert_contains "$KILO_PROJECT_DIR/.kilocode/workflows/aif-plan.md" "/aif:[a-z-]+" "Kilo workflow content must use Kilo invocation syntax"
 assert_exists "$KILO_PROJECT_DIR/.kilocode/skills/aif-docs/SKILL.md" "non-workflow Kilo skills must remain in skills/"
 assert_not_exists "$KILO_PROJECT_DIR/.kilocode/skills/aif" "workflow skill should not remain in skills/"
 assert_not_exists "$KILO_PROJECT_DIR/.kilocode/skills/aif-plan" "workflow skill should not remain in skills/"
 assert_not_exists "$KILO_PROJECT_DIR/.kilocode/skills/aif-commit" "workflow skill should not remain in skills/"
+assert_not_exists "$KILO_PROJECT_DIR/.kilocode/skills/aif-rules-check" "workflow skill should not remain in skills/"
 
 echo "kilocode workflow smoke tests passed"
 

@@ -117,11 +117,14 @@ echo "claude init smoke tests passed"
 FLAT_PROJECT_DIR="$TMPDIR/init-smoke-antigravity"
 mkdir -p "$FLAT_PROJECT_DIR"
 
-(cd "$FLAT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents antigravity --skills aif > "$TMPDIR/init-antigravity.log" 2>&1)
+(cd "$FLAT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents antigravity --skills aif,aif-rules-check > "$TMPDIR/init-antigravity.log" 2>&1)
 
 assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/aif.md" "antigravity init must install aif as a flat workflow"
+assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/aif-rules-check.md" "antigravity init must install aif-rules-check as a flat workflow"
 assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/references/update-config.mjs" "flat workflow installs must include the config helper in references/"
 assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/references/config-template.yaml" "flat workflow installs must include config template references"
+assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/references/RULES-CHECK-CONTRACT.md" "flat workflow installs must include rules-check references"
+assert_not_exists "$FLAT_PROJECT_DIR/.agent/skills/aif-rules-check" "workflow-classified skills must not remain under .agent/skills/"
 
 echo "flat workflow init smoke tests passed"
 
@@ -385,3 +388,90 @@ assert_exists "$UNSAFE_PROJECT_DIR/SHOULD_NOT_DELETE.md" "init deselection must 
 assert_contains "$TMPDIR/init-unsafe-remove.log" 'Skipping unsafe managed agent file path "\.\./\.\./SHOULD_NOT_DELETE\.md"' "init must warn when config contains an unsafe managed agent file path"
 
 echo "unsafe managed agent file removal smoke tests passed"
+
+# CLI validation smoke: extension add must reject excess arguments.
+# -------------------------------------------------------------------
+
+if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$CONFLICT_EXTENSION_DIR" unexpected > "$TMPDIR/init-ext-extra-args.log" 2>&1); then
+  echo "Assertion failed: extension add must reject excess arguments"
+  cat "$TMPDIR/init-ext-extra-args.log"
+  exit 1
+fi
+assert_contains "$TMPDIR/init-ext-extra-args.log" "too many arguments" "extension add must fail fast on excess arguments"
+
+echo "extension add excess-arguments smoke tests passed"
+
+# -------------------------------------------------------------------
+# Windows npm resolution smoke: npm-based extension install must
+# resolve npm-cli.js without shell fallback and fail explicitly when
+# no safe npm entrypoint exists.
+# -------------------------------------------------------------------
+
+ROOT_DIR="$ROOT_DIR" node --input-type=module <<'EOF'
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const { resolveNpmCommand } = await import(pathToFileURL(path.join(process.env.ROOT_DIR, 'dist/core/extensions.js')).href);
+
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aif-npm-resolve-'));
+const fakeExecDir = path.join(tempRoot, 'current-node');
+fs.mkdirSync(fakeExecDir, { recursive: true });
+const fakeExecPath = path.join(fakeExecDir, 'node.exe');
+fs.writeFileSync(fakeExecPath, '');
+
+const npmRoot = path.join(tempRoot, 'npm-root');
+const npmCliPath = path.join(npmRoot, 'node_modules', 'npm', 'bin', 'npm-cli.js');
+const bundledNodePath = path.join(npmRoot, 'node.exe');
+fs.mkdirSync(path.dirname(npmCliPath), { recursive: true });
+fs.writeFileSync(path.join(npmRoot, 'npm.cmd'), '@ECHO off\r\n');
+fs.writeFileSync(npmCliPath, '#!/usr/bin/env node\n');
+fs.writeFileSync(bundledNodePath, '');
+
+const resolved = await resolveNpmCommand({
+  platform: 'win32',
+  execPath: fakeExecPath,
+  pathEnv: `${npmRoot};${process.env.PATH}`,
+});
+
+assert.equal(resolved.command, bundledNodePath, 'Windows npm resolution must prefer node.exe adjacent to npm.cmd');
+assert.deepEqual(resolved.argsPrefix, [npmCliPath], 'Windows npm resolution must invoke npm-cli.js directly');
+
+const resolvedWithCustomDelimiter = await resolveNpmCommand({
+  platform: 'win32',
+  execPath: fakeExecPath,
+  pathEnv: `${path.relative(process.cwd(), npmRoot)}:${path.relative(process.cwd(), tempRoot)}`,
+  pathDelimiter: ':',
+});
+
+assert.equal(
+  resolvedWithCustomDelimiter.command,
+  path.join(path.relative(process.cwd(), npmRoot), 'node.exe'),
+  'Windows npm resolution must honor injected path delimiters instead of host defaults',
+);
+assert.deepEqual(
+  resolvedWithCustomDelimiter.argsPrefix,
+  [path.join(path.relative(process.cwd(), npmRoot), 'node_modules', 'npm', 'bin', 'npm-cli.js')],
+  'Windows npm resolution must honor injected delimiters when locating npm-cli.js',
+);
+
+const noSafeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aif-npm-missing-'));
+const missingExecDir = path.join(noSafeRoot, 'isolated-node');
+fs.mkdirSync(missingExecDir, { recursive: true });
+const missingExecPath = path.join(missingExecDir, 'node.exe');
+fs.writeFileSync(missingExecPath, '');
+
+await assert.rejects(
+  () => resolveNpmCommand({
+    platform: 'win32',
+    execPath: missingExecPath,
+    pathEnv: noSafeRoot,
+  }),
+  /safe Windows npm/i,
+  'Windows npm resolution must fail explicitly when no safe npm-cli.js path is available',
+);
+EOF
+
+echo "windows npm resolution smoke tests passed"

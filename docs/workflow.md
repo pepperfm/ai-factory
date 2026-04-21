@@ -176,6 +176,7 @@ Optional conventions step: use `/aif-rules` to append or refine project-wide axi
 | `/aif-loop` | Iterative generation with quality gates and phase-based cycles | No | No (uses `paths.evolution`, default `.ai-factory/evolution/`) |
 | `/aif-reference` | Create knowledge refs from URLs/docs for AI agents | No | No (`paths.references`, default `.ai-factory/references/`) |
 | `/aif-fix` | Bug fixes, errors, hotfixes | No | Optional (`paths.fix_plan`, default `.ai-factory/FIX_PLAN.md`) |
+| `/aif-rules-check` | Standalone read-only rules compliance gate for staged work, working tree, or a git ref | No | No (reads existing rules and optional plan context) |
 | `/aif-verify` | Post-implementation quality check | No | No (reads existing) |
 | `/aif-qa` | Manual QA for a feature/fix: change summary → test plan → test cases | No | `paths.qa/<branch-slug>/*.md` (default: `.ai-factory/qa/<branch-slug>/`) |
 
@@ -195,12 +196,14 @@ Ownership is command-scoped to avoid conflicting writers:
 | `/aif-fix`                                | `paths.fix_plan`, `paths.patches/*.md`                                                        | bug-fix learning loop artifacts                           |
 | `/aif-evolve`                             | `paths.evolutions/*.md`, `paths.evolutions/patch-cursor.json`, `.ai-factory/skill-context/*`  | skill-context overrides + evolution logs + cursor state   |
 | `/aif-qa`                                 | `paths.qa/<branch-slug>/change-summary.md`, `test-plan.md`, `test-cases.md`                   | derived branch slug as subdirectory (see aif-qa SKILL.md) |
+| `/aif-rules-check`                        | read-only context by default                                                                  | standalone rules gate; no default context-file writes     |
 | `/aif-commit` `/aif-review` `/aif-verify` | read-only context by default                                                                  | gate and report, no default context-file writes           |
 
 Context-gate defaults for `/aif-commit`, `/aif-review`, `/aif-verify`:
 - Check architecture, roadmap, and rules alignment as read-only context.
 - Missing optional files (`ROADMAP.md`, `RULES.md`) are `WARN`, not immediate failures.
 - In strict verification, clear architecture/rules violations and clear roadmap mismatch are blocking failures.
+- `/aif-rules-check` is the standalone rules-only companion and uses `PASS` / `WARN` / `FAIL` without changing the `WARN` / `ERROR` contract above.
 
 ## Workflow Skills
 
@@ -295,6 +298,10 @@ Optional step after `/aif-implement`. Goes through every task in the plan and ve
 
 Also runs read-only context gates against the resolved architecture, roadmap, and RULES.md artifacts. In normal mode, roadmap/milestone linkage gaps are warnings; in strict mode, clear roadmap mismatch is a failure, while missing `feat`/`fix`/`perf` milestone linkage remains a warning.
 
+### `/aif-rules-check` — standalone rules gate
+
+Checks only rules compliance for staged changes, working-tree changes, or a provided git ref. It reads the resolved rules hierarchy, uses optional active plan context only to disambiguate scope, and stays read-only. Standalone verdicts are `PASS` / `WARN` / `FAIL`: missing or ambiguous rules stay `WARN`, while `FAIL` is reserved for explicit hard-rule violations tied to concrete diff evidence.
+
 ### `/aif-review` — code review with read-only context gates
 
 Reviews staged changes or PR diff and reports correctness/security/performance findings. Includes read-only architecture/roadmap/rules gate notes in review output (`WARN` for non-blocking inconsistencies, `ERROR` only for explicitly blocking criteria).
@@ -331,7 +338,7 @@ Reads patches incrementally using an evolve cursor, analyzes project patterns, a
 
 ---
 
-For full details on all skills including utility commands (`/aif-docs`, `/aif-dockerize`, `/aif-build-automation`, `/aif-ci`, `/aif-commit`, `/aif-skill-generator`, `/aif-reference`, `/aif-security-checklist`, `/aif-qa`), see [Core Skills](skills.md).
+For full details on all skills including utility commands (`/aif-docs`, `/aif-dockerize`, `/aif-build-automation`, `/aif-ci`, `/aif-commit`, `/aif-rules-check`, `/aif-skill-generator`, `/aif-reference`, `/aif-security-checklist`, `/aif-qa`), see [Core Skills](skills.md).
 
 ## Why Spec-Driven?
 

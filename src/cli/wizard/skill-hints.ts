@@ -20,6 +20,7 @@ const SKILL_HINTS: Record<string, string> = {
     'aif-review': 'Review staged changes/PR',
     'aif-roadmap': 'Roadmap and milestones',
     'aif-rules': 'Project rules and conventions',
+    'aif-rules-check': 'Standalone project rules gate',
     'aif-security-checklist': 'Security audit checklist',
     'aif-skill-generator': 'Generate new agent skills',
     'aif-verify': 'Verify implementation completeness',
