@@ -4,11 +4,11 @@
 
 > AI Factory ships bundled runtime-native agent files for **Claude Code** and **Codex CLI**. `ai-factory init` installs Claude markdown agents into `.claude/agents/`, and installs Codex TOML agents into `.codex/agents/` plus a managed `.codex/config.toml`. `ai-factory update` refreshes those managed files without touching user-created custom agents. Extensions may additionally provide agent files for Codex or extension-defined runtimes through the extension manifest. This is baseline native-agent support for Codex, not full parity with the broader Claude bundle.
 
-This page focuses on the bundled Claude and Codex files shipped by the base AI Factory package. The generic agent-files infrastructure for extensions and dynamic runtimes is documented in [Extensions](extensions.md) and [Configuration](configuration.md).
+This page focuses on the bundled Claude and Codex files shipped by the base AI Factory package. The generic agent-files infrastructure for extensions and dynamic runtimes is documented in [Extensions](extensions.md) and [Configuration](configuration.md). Extension-provided Codex helpers can be useful, but they are not automatic equivalents of the top-level Claude coordinator loop described on this page, and their runtime settings live in their own runtime-native agent files rather than being passed from Claude-style coordinator prompts. For bounded Codex helpers, prefer read-only advisory workers over writer roles.
 
 ## Migration Note
 
-If you have an existing AI Factory project that was initialized before bundled agent-file support was added, running `ai-factory update` will automatically install bundled package agent files into the runtime-specific target directory (`.claude/agents/` for Claude, `.codex/agents/` for Codex). `loadConfig()` still reads legacy Claude-only `subagentsDir`, `installedSubagents`, and `managedSubagents`, but persists the universal `agentsDir`, `installedAgentFiles`, and `managedAgentFiles` fields on the next save.
+If you have an existing AI Factory project that was initialized before bundled agent-file support was added, running `ai-factory update` will automatically install bundled package agent files into the runtime-specific target directory (`.claude/agents/` for Claude, `.codex/agents/` for Codex). `loadConfig()` still reads legacy Claude-only `subagentsDir`, `installedSubagents`, and `managedSubagents`, but persists the universal `agentsDir`, `installedAgentFiles`, `managedAgentFiles`, and `agentFileSources` fields on the next save.
 
 If you already have custom agents in `.claude/agents/` or `.codex/agents/`, they will not be touched — AI Factory only manages files listed in `installedAgentFiles`, `managedAgentFiles`, `installedConfigFiles`, and `managedConfigFiles` in `.ai-factory.json`. For Codex, that managed set includes `.codex/config.toml`; if drift is detected in that file, `ai-factory update` may overwrite it to restore the package-managed defaults.
 
@@ -71,11 +71,11 @@ When those agents are used from `aif-handoff`, the bundle is also **handoff-awar
 
 | Agent | Purpose | Model | Tools |
 |---|---|---|---|
-| `plan-coordinator` | iteratively launch `plan-polisher` in a critique→improve loop until the plan passes or the iteration budget is exhausted. **Top-level agent only** | `inherit` | `Agent(plan-polisher), Read, Glob, Grep, Bash` |
+| `plan-coordinator` | iteratively launch `plan-polisher` in a critique→improve loop until the plan passes or the iteration budget is exhausted. Defaults to `full` planning when the caller did not choose a mode. **Top-level agent only** | `inherit` | `Agent(plan-polisher), Read, Glob, Grep, Bash` |
 | `implement-coordinator` | parse plan dependency graph, implement single tasks directly with quality sidecars, dispatch `implement-worker` workers for parallel tasks, merge results. **Top-level agent only** | `inherit` | `Agent(implement-worker, best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
 | `implement-worker` | isolated worktree worker for parallel task execution — implements one task, runs local quality checks, returns results to coordinator | `inherit` | `Read, Write, Edit, Glob, Grep, Bash` |
 | `best-practices-sidecar` | background read-only best-practices sidecar for current implementation scope | `inherit` | `Read, Glob, Grep, Bash` |
-| `plan-polisher` | create or refresh an `/aif-plan` artifact, critique it, and iterate with `/aif-improve` until the plan is stable | `inherit` | `Read, Write, Edit, Glob, Grep, Bash` |
+| `plan-polisher` | create or refresh an `/aif-plan` artifact, run one local critique+refine cycle, and return whether another iteration is needed | `inherit` | `Read, Write, Edit, Glob, Grep, Bash` |
 | `commit-preparer` | background read-only commit preparation sidecar for current implementation scope | `sonnet` | `Read, Glob, Grep, Bash` |
 | `docs-auditor` | background read-only documentation drift sidecar for current implementation scope | `sonnet` | `Read, Glob, Grep, Bash` |
 | `review-sidecar` | background read-only code review sidecar for current implementation scope | `inherit` | `Read, Glob, Grep, Bash` |
@@ -94,6 +94,8 @@ When those agents are used from `aif-handoff`, the bundle is also **handoff-awar
 
 `plan-polisher` is not part of `/aif-loop`. It is a self-contained planning worker for Claude Code that:
 - runs an `/aif-plan`-compatible pass directly inside the subagent
+- defaults to the richer `full` planning contract unless the caller explicitly asks for `fast`
+- performs local two-pass exploration (quick reconnaissance + deeper analysis) to cover the same discovery surface that `/aif-plan` normally delegates to `Explore` subagents
 - critiques the generated plan against implementation-readiness criteria
 - applies at most one `/aif-improve`-compatible refinement pass
 - returns `needs_further_refinement: yes/no` to the caller
@@ -124,6 +126,20 @@ When set to `infer` (the default), `plan-polisher` auto-detects from the project
 Explicit values from the caller always take priority over inference.
 
 This gives the user a fire-and-forget planning experience: start `claude --agent plan-coordinator "implement user auth with JWT"` and get back a polished, implementation-ready plan without manual re-runs.
+
+### Repro And Acceptance
+
+Issue [#78](https://github.com/lee-to/ai-factory/issues/78) is tracked as a planning-quality parity bug, not as a request for a brand-new discovery stage.
+
+The regression to guard against is simple:
+- use a straightforward task such as bootstrapping a Go project
+- compare the subagent path (`plan-coordinator -> plan-polisher`) with the chat path (`/aif-plan -> /aif-improve`)
+- fail the contract if the subagent path systematically misses obvious setup work, weakens dependencies, or adds irrelevant implementation tasks that the chat path does not need
+
+The fix is therefore judged on practical plan quality:
+- richer defaults must not silently fall back to `fast`
+- local exploration must still cover reconnaissance plus deeper analysis even without nested workers
+- documentation must not promise stronger guarantees than the runtime actually ships
 
 ## How `implement-coordinator` Fits
 
@@ -350,7 +366,7 @@ claude --agent implement-coordinator "@.ai-factory/plans/feature-auth.md"
 
 ## Why Only Claude For Now
 
-Other supported agents in AI Factory have their own skill formats and extension points, but they do not share Claude Code's `.claude/agents/` subagent mechanism. So this specific setup is intentionally documented as Claude-only instead of pretending it is portable.
+Other supported agents in AI Factory have their own skill formats and extension points, but they do not share Claude Code's `.claude/agents/` subagent mechanism. So this specific setup is intentionally documented as Claude-only instead of pretending it is portable. Extension-provided Codex agent files may still ship bounded helpers, but those helpers are read-only one-shot workers, not replacements for the Claude-only coordinator loop on this page.
 
 If we later build an agent-agnostic abstraction for role-based loop workers, this page should be updated to separate:
 - Claude-native subagents

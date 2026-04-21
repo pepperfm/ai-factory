@@ -18,13 +18,35 @@ import {
   fileExists,
   hashDirectory,
 } from '../utils/fs.js';
-import type { AgentInstallation, ManagedArtifactState } from './config.js';
-import { AGENT_IDS, getAgentConfig } from './agents.js';
-import type { ExtensionAgentFile } from './extensions.js';
+import type { AgentFileSource, AgentInstallation, ManagedArtifactState } from './config.js';
+import { getAgentConfig } from './agents.js';
+import { getExtensionsDir, type ExtensionManifest, type ExtensionAgentFile } from './extensions.js';
+import { AGENT_IDS } from './agents.js';
 import { processSkillTemplates, buildTemplateVars, processTemplate } from './template.js';
 import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from './transformer.js';
 
 const EXTENSION_INJECTION_BLOCK_PATTERN = /\n?<!-- aif-ext:[^:]+:[^:]+:[^:]+:start -->\n[\s\S]*?\n<!-- aif-ext:[^:]+:[^:]+:[^:]+:end -->\n?/g;
+
+// Top-level directories inside a skill source that must never be shipped to
+// the user's project: they are part of our authoring/testing workflow only.
+const SKILL_INTERNAL_TOP_LEVEL_DIRS = new Set(['tests']);
+
+function isSkillInternalChild(skillRootDir: string, candidate: string): boolean {
+  const rel = path.relative(skillRootDir, candidate);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
+    return false;
+  }
+  const [top] = rel.split(path.sep);
+  return SKILL_INTERNAL_TOP_LEVEL_DIRS.has(top);
+}
+
+function skillSourceCopyFilter(skillRootDir: string): (srcPath: string) => boolean {
+  return (srcPath: string) => !isSkillInternalChild(skillRootDir, srcPath);
+}
+
+function skillSourceSkipDirectory(skillRootDir: string): (absPath: string, name: string) => boolean {
+  return (absPath: string) => isSkillInternalChild(skillRootDir, absPath);
+}
 
 export type SkillUpdateStatus = 'changed' | 'unchanged' | 'skipped' | 'removed';
 
@@ -47,6 +69,7 @@ export interface SubagentUpdateEntry {
 
 export interface UpdateSubagentsResult {
   installedAgentFiles: string[];
+  agentFileSources: Record<string, AgentFileSource>;
   entries: SubagentUpdateEntry[];
 }
 
@@ -117,6 +140,16 @@ function assertSafeManagedRelativePath(relPath: string): void {
     throw new Error(`Managed artifact path must not escape its base directory: ${relPath}`);
   }
 }
+
+interface ManagedAgentFileResolution {
+  status: 'resolved' | 'missing-source-metadata' | 'missing-source-root' | 'missing-source-file' | 'missing-installed-artifact';
+  state?: ManagedArtifactState;
+}
+
+type PreservableManagedAgentFileStatus =
+  | 'missing-source-metadata'
+  | 'missing-source-root'
+  | 'missing-source-file';
 
 function normalizeMarkdownForManagedHash(content: string): string {
   return content
@@ -276,7 +309,6 @@ export function resolveManagedConfigFilePaths(projectDir: string, agentId: strin
     relPath,
   };
 }
-
 function getBundledAgentFilesSourceDir(agentId: string): string | null {
   const agentConfig = getAgentConfig(agentId);
   if (agentConfig.source !== 'builtin') {
@@ -342,7 +374,9 @@ async function getManagedSkillState(
   skillName: string,
 ): Promise<ManagedArtifactState | null> {
   const sourceSkillDir = path.join(getSkillsDir(), skillName);
-  const sourceHash = await hashDirectory(sourceSkillDir);
+  const sourceHash = await hashDirectory(sourceSkillDir, {
+    skipDirectory: skillSourceSkipDirectory(sourceSkillDir),
+  });
   if (!sourceHash) {
     return null;
   }
@@ -396,35 +430,126 @@ export async function getAvailableSubagents(agentId: string = 'claude'): Promise
   return relPaths;
 }
 
-async function getManagedSubagentState(
+export function buildBundledAgentFileSources(relPaths: string[]): Record<string, AgentFileSource> {
+  const result: Record<string, AgentFileSource> = {};
+  for (const relPath of relPaths) {
+    result[relPath] = {
+      kind: 'bundled',
+      sourcePath: relPath,
+    };
+  }
+  return result;
+}
+
+export function buildExtensionAgentFileSources(
+  manifest: ExtensionManifest,
+): Map<string, Record<string, AgentFileSource>> {
+  const result = new Map<string, Record<string, AgentFileSource>>();
+
+  for (const agentFile of manifest.agentFiles ?? []) {
+    const existing = result.get(agentFile.runtime) ?? {};
+    existing[agentFile.target] = {
+      kind: 'extension',
+      sourcePath: agentFile.source,
+      extensionName: manifest.name,
+    };
+    result.set(agentFile.runtime, existing);
+  }
+
+  return result;
+}
+
+function resolveManagedAgentFilePaths(
   projectDir: string,
   agentInstallation: AgentInstallation,
   relPath: string,
-): Promise<ManagedArtifactState | null> {
+  source: AgentFileSource,
+): ResolvedAgentFilePaths | null {
   if (!agentInstallation.agentsDir) {
     return null;
   }
-  const paths = resolveManagedSubagentPaths(projectDir, agentInstallation.id, agentInstallation.agentsDir, relPath);
+
+  if (source.kind === 'bundled') {
+    const sourceRoot = getBundledAgentFilesSourceDir(agentInstallation.id);
+    if (!sourceRoot) {
+      return null;
+    }
+
+    return resolveAgentFilePaths(projectDir, agentInstallation.agentsDir, sourceRoot, source.sourcePath, relPath);
+  }
+
+  if (!source.extensionName) {
+    return null;
+  }
+
+  const sourceRoot = path.join(getExtensionsDir(projectDir), source.extensionName);
+  return resolveAgentFilePaths(projectDir, agentInstallation.agentsDir, sourceRoot, source.sourcePath, relPath);
+}
+
+async function getManagedAgentFileResolution(
+  projectDir: string,
+  agentInstallation: AgentInstallation,
+  relPath: string,
+  source?: AgentFileSource,
+): Promise<ManagedAgentFileResolution> {
+  if (!source) {
+    return { status: 'missing-source-metadata' };
+  }
+
+  const paths = resolveManagedAgentFilePaths(projectDir, agentInstallation, relPath, source);
+  if (!paths) {
+    return { status: 'missing-source-root' };
+  }
+
   const sourceHash = await hashManagedFile(paths.sourceFile, relPath);
   if (!sourceHash) {
-    return null;
+    return { status: 'missing-source-file' };
   }
 
   const installedHash = await hashManagedFile(paths.targetFile, relPath);
   if (!installedHash) {
-    return null;
+    return { status: 'missing-installed-artifact' };
   }
 
   return {
-    sourceHash,
-    installedHash,
+    status: 'resolved',
+    state: {
+      sourceHash,
+      installedHash,
+    },
   };
 }
 
-export async function buildManagedSubagentsState(
+function shouldPreserveManagedStateOnMissingSource(
+  status: ManagedAgentFileResolution['status'],
+): status is PreservableManagedAgentFileStatus {
+  return status === 'missing-source-metadata'
+    || status === 'missing-source-root'
+    || status === 'missing-source-file';
+}
+
+function formatManagedAgentFileResolutionWarning(
+  relPath: string,
+  status: PreservableManagedAgentFileStatus,
+): string {
+  switch (status) {
+    case 'missing-source-metadata':
+      return `Warning: Managed agent file "${relPath}" has no source metadata - preserving previous hash state.`;
+    case 'missing-source-root':
+      return `Warning: Managed agent file "${relPath}" source root is unavailable - preserving previous hash state.`;
+    case 'missing-source-file':
+      return `Warning: Managed agent file "${relPath}" source file is unavailable - preserving previous hash state.`;
+  }
+}
+
+export async function buildManagedAgentFilesState(
   projectDir: string,
   agentInstallation: AgentInstallation,
-  installedSubagents: string[],
+  installedAgentFiles: string[],
+  options: {
+    preserveExistingOnMissingSource?: boolean;
+    warn?: (message: string) => void;
+  } = {},
 ): Promise<Record<string, ManagedArtifactState>> {
   const state: Record<string, ManagedArtifactState> = {};
 
@@ -432,10 +557,23 @@ export async function buildManagedSubagentsState(
     return state;
   }
 
-  for (const relPath of installedSubagents) {
-    const managed = await getManagedSubagentState(projectDir, agentInstallation, relPath);
-    if (managed) {
-      state[relPath] = managed;
+  const previousManaged = agentInstallation.managedAgentFiles ?? {};
+  const sources = agentInstallation.agentFileSources ?? {};
+
+  for (const relPath of installedAgentFiles) {
+    const resolution = await getManagedAgentFileResolution(projectDir, agentInstallation, relPath, sources[relPath]);
+    if (resolution.status === 'resolved' && resolution.state) {
+      state[relPath] = resolution.state;
+      continue;
+    }
+
+    if (
+      options.preserveExistingOnMissingSource
+      && previousManaged[relPath]
+      && shouldPreserveManagedStateOnMissingSource(resolution.status)
+    ) {
+      state[relPath] = previousManaged[relPath];
+      options.warn?.(formatManagedAgentFileResolutionWarning(relPath, resolution.status));
     }
   }
 
@@ -491,6 +629,36 @@ export async function buildManagedConfigFilesState(
   return state;
 }
 
+export async function buildManagedSubagentsState(
+  projectDir: string,
+  agentInstallation: AgentInstallation,
+  installedSubagents: string[],
+): Promise<Record<string, ManagedArtifactState>> {
+  return buildManagedAgentFilesState(projectDir, agentInstallation, installedSubagents);
+}
+
+export async function rebuildManagedAgentFilesForAgents(
+  projectDir: string,
+  agents: AgentInstallation[],
+  options: {
+    preserveExistingOnMissingSource?: boolean;
+    warn?: (message: string) => void;
+  } = {},
+): Promise<void> {
+  for (const agent of agents) {
+    if (!agent.agentsDir) {
+      continue;
+    }
+
+    agent.managedAgentFiles = await buildManagedAgentFilesState(
+      projectDir,
+      agent,
+      agent.installedAgentFiles ?? [],
+      options,
+    );
+  }
+}
+
 async function installSkillWithTransformer(
   sourceSkillDir: string,
   skillName: string,
@@ -525,7 +693,9 @@ async function installSkillWithTransformer(
     }
   } else {
     const targetSkillDir = path.join(projectDir, skillsDir, result.targetDir);
-    await copyDirectory(sourceSkillDir, targetSkillDir);
+    await copyDirectory(sourceSkillDir, targetSkillDir, {
+      filter: skillSourceCopyFilter(sourceSkillDir),
+    });
     if (result.content !== content) {
       await writeTextFile(path.join(targetSkillDir, 'SKILL.md'), result.content);
     } else if (adjustedContent !== content) {
@@ -771,7 +941,9 @@ export async function updateSkills(
 
   for (const skillName of updatableBaseSkills) {
     const sourceSkillDir = path.join(getSkillsDir(), skillName);
-    const sourceHash = await hashDirectory(sourceSkillDir);
+    const sourceHash = await hashDirectory(sourceSkillDir, {
+      skipDirectory: skillSourceSkipDirectory(sourceSkillDir),
+    });
     const paths = resolveSkillPaths(projectDir, agentInstallation.skillsDir, agentInstallation.id, skillName, sourceSkillDir);
     const installedHash = await hashInstalledSkill(paths);
     const previousState = previousManaged[skillName];
@@ -865,19 +1037,35 @@ export async function updateSubagents(
   if (!agentInstallation.agentsDir) {
     return {
       installedAgentFiles: [],
+      agentFileSources: {},
       entries: [],
     };
   }
 
   const { force = false } = options;
+  const sourceRoot = getBundledAgentFilesSourceDir(agentInstallation.id);
+  if (!sourceRoot) {
+    return {
+      installedAgentFiles: agentInstallation.installedAgentFiles ?? [],
+      agentFileSources: { ...(agentInstallation.agentFileSources ?? {}) },
+      entries: [],
+    };
+  }
   const availableSubagents = await getAvailableSubagents(agentInstallation.id);
   const availableSet = new Set(availableSubagents);
   const previousInstalled = agentInstallation.installedAgentFiles ?? [];
   const previousInstalledSet = new Set(previousInstalled);
+  const previousSources = agentInstallation.agentFileSources ?? {};
   const previousManaged = agentInstallation.managedAgentFiles ?? {};
   const entries: SubagentUpdateEntry[] = [];
+  const previousBundledInstalled = previousInstalled.filter(
+    relPath => previousSources[relPath]?.kind === 'bundled' || (!previousSources[relPath] && availableSet.has(relPath)),
+  );
+  const previousNonBundledInstalled = previousInstalled.filter(relPath => previousSources[relPath]?.kind !== 'bundled');
 
-  const removedSubagents = previousInstalled.filter((subagent: string) => !availableSet.has(subagent));
+  const removedSubagents = previousBundledInstalled.filter(
+    (subagent: string) => !availableSet.has(subagent),
+  );
   if (removedSubagents.length > 0) {
     await removeSubagentsByName(projectDir, agentInstallation, removedSubagents);
     for (const subagent of removedSubagents) {
@@ -974,9 +1162,21 @@ export async function updateSubagents(
   }
 
   const syncedSubagents = availableSubagents.filter(relPath => installedSet.has(relPath) || previousInstalledSet.has(relPath));
+  const syncedInstalledAgentFiles = Array.from(new Set([...previousNonBundledInstalled, ...syncedSubagents])).sort();
+  const syncedAgentFileSources: Record<string, AgentFileSource> = {};
+
+  for (const relPath of previousNonBundledInstalled) {
+    const source = previousSources[relPath];
+    if (source) {
+      syncedAgentFileSources[relPath] = source;
+    }
+  }
+
+  Object.assign(syncedAgentFileSources, buildBundledAgentFileSources(syncedSubagents));
 
   return {
-    installedAgentFiles: syncedSubagents,
+    installedAgentFiles: syncedInstalledAgentFiles,
+    agentFileSources: syncedAgentFileSources,
     entries,
   };
 }

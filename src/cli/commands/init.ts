@@ -2,15 +2,17 @@ import chalk from 'chalk';
 import path from 'path';
 import { runWizard, type WizardAnswers } from '../wizard/prompts.js';
 import {
+  buildBundledAgentFileSources,
+  buildExtensionAgentFileSources,
   buildManagedConfigFilesState,
   buildManagedSkillsState,
-  buildManagedSubagentsState,
   installConfigFiles,
   installSkills,
   installSubagents,
+  getAvailableSkills,
+  rebuildManagedAgentFilesForAgents,
   resolveManagedConfigFilePaths,
   resolveInstalledAgentFileTargetPath,
-  getAvailableSkills,
 } from '../../core/installer.js';
 import { saveConfig, configExists, loadConfig, getCurrentVersion, type AgentInstallation } from '../../core/config.js';
 import { configureMcp, getMcpInstructions } from '../../core/mcp.js';
@@ -22,6 +24,8 @@ import {
   assertNoAgentFileConflicts,
   collectReplacedSkills,
   installExtensionAgentFilesForAllAgents,
+  mergeAgentFileSources,
+  mergeInstalledAgentFiles,
 } from '../../core/extension-ops.js';
 import { loadAllExtensions, type ExtensionManifest } from '../../core/extensions.js';
 
@@ -114,8 +118,15 @@ async function removeAgentSetup(
     }
 
     for (const relPath of managedFiles) {
-      const targetFile = resolveInstalledAgentFileTargetPath(projectDir, agentsDir, relPath);
-      await removeFile(targetFile);
+      try {
+        await removeFile(resolveInstalledAgentFileTargetPath(projectDir, agentsDir, relPath));
+      } catch (error) {
+        console.log(
+          chalk.yellow(
+            `Warning: Skipping unsafe managed agent file path "${relPath}" while removing ${agent.id}: ${(error as Error).message}`,
+          ),
+        );
+      }
     }
   }
 
@@ -221,6 +232,7 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
         ...(agentConfig.agentsDir ? {
           agentsDir: agentConfig.agentsDir,
           installedAgentFiles,
+          agentFileSources: buildBundledAgentFileSources(installedAgentFiles),
         } : {}),
         ...(agentConfig.configFiles?.length ? {
           configFiles: agentConfig.configFiles,
@@ -250,7 +262,9 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
           extensions: existingExtensions,
           agents: installedAgents,
         }, manifest);
-        await installExtensionAgentFilesForAllAgents(projectDir, installedAgents, dir, manifest);
+        const agentFileResults = await installExtensionAgentFilesForAllAgents(projectDir, installedAgents, dir, manifest);
+        mergeInstalledAgentFiles(installedAgents, agentFileResults);
+        mergeAgentFileSources(installedAgents, buildExtensionAgentFileSources(manifest));
       }
 
       let totalInjections = 0;
@@ -266,13 +280,11 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
     for (const agent of installedAgents) {
       const managedBaseSkills = agent.installedSkills.filter(skill => !replacedSkills.has(skill));
       agent.managedSkills = await buildManagedSkillsState(projectDir, agent, managedBaseSkills);
-      if (agent.agentsDir) {
-        agent.managedAgentFiles = await buildManagedSubagentsState(projectDir, agent, agent.installedAgentFiles ?? []);
-      }
       if ((agent.configFiles ?? []).length > 0) {
         agent.managedConfigFiles = await buildManagedConfigFilesState(projectDir, agent, agent.installedConfigFiles ?? []);
       }
     }
+    await rebuildManagedAgentFilesForAgents(projectDir, installedAgents);
 
     await saveConfig(projectDir, {
       version: getCurrentVersion(),
