@@ -141,7 +141,12 @@ assert_contains "$PROJECT_DIR/.codex/agents/plan-coordinator.toml" "HANDOFF_MODE
 assert_contains "$PROJECT_DIR/.codex/agents/plan-coordinator.toml" "HANDOFF_TASK_ID" "Codex plan coordinator must carry handoff task identity guidance"
 assert_contains "$PROJECT_DIR/.codex/agents/implement-coordinator.toml" "HANDOFF_SKIP_REVIEW" "Codex implement coordinator must understand handoff skip-review context"
 assert_contains "$PROJECT_DIR/.codex/agents/implement-coordinator.toml" "do not perform Handoff MCP sync yourself" "Codex implement coordinator must keep autonomous Handoff sync disabled"
+assert_contains "$PROJECT_DIR/.codex/agents/best-practices-sidecar.toml" 'sandbox_mode = "read-only"' "Codex best-practices sidecar must declare read-only sandbox mode"
 assert_contains "$PROJECT_DIR/.codex/agents/review-sidecar.toml" "Never perform Handoff MCP sync" "Codex review sidecar must keep Handoff sync coordinator-owned"
+assert_contains "$PROJECT_DIR/.codex/agents/review-sidecar.toml" 'sandbox_mode = "read-only"' "Codex review sidecar must declare read-only sandbox mode"
+assert_contains "$PROJECT_DIR/.codex/agents/security-sidecar.toml" 'sandbox_mode = "read-only"' "Codex security sidecar must declare read-only sandbox mode"
+assert_contains "$PROJECT_DIR/.codex/agents/docs-auditor.toml" 'sandbox_mode = "read-only"' "Codex docs auditor must declare read-only sandbox mode"
+assert_contains "$PROJECT_DIR/.codex/agents/commit-preparer.toml" 'sandbox_mode = "read-only"' "Codex commit preparer must declare read-only sandbox mode"
 
 EXPECTED_CODEX_AGENT_FILES="$EXPECTED_CODEX_AGENT_FILES" node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];const expected=Number(process.env.EXPECTED_CODEX_AGENT_FILES);if(a.id!=='codex')process.exit(1);if(a.agentsDir!=='.codex/agents')process.exit(1);if(!Array.isArray(a.installedAgentFiles)||a.installedAgentFiles.length!==expected)process.exit(1);if(!a.managedAgentFiles||!a.managedAgentFiles['plan-coordinator.toml'])process.exit(1);if(!a.configFiles||a.configFiles[0]!=='config.toml')process.exit(1);if(!a.installedConfigFiles||a.installedConfigFiles[0]!=='config.toml')process.exit(1);if(!a.managedConfigFiles||!a.managedConfigFiles['config.toml'])process.exit(1);" "$PROJECT_DIR/.ai-factory.json"
 
@@ -455,6 +460,41 @@ fi
 assert_contains "$TMPDIR/init-ext-conflict.log" "already owned by AI Factory bundled Claude agent files" "bundled Claude target collision must be rejected with a clear message"
 
 echo "extension agent file conflict smoke tests passed"
+
+# -------------------------------------------------------------------
+# Ownership conflict smoke: extension add must reject agentFiles that
+# collide with bundled Codex agent file targets.
+# -------------------------------------------------------------------
+CODEX_CONFLICT_EXTENSION_DIR="$TMPDIR/runtime-agent-files-codex-conflict"
+mkdir -p "$CODEX_CONFLICT_EXTENSION_DIR/agent-files/codex"
+
+cat > "$CODEX_CONFLICT_EXTENSION_DIR/extension.json" << 'EOF'
+{
+  "name": "aif-ext-runtime-agent-files-codex-conflict",
+  "version": "1.0.0",
+  "agentFiles": [
+    {
+      "runtime": "codex",
+      "source": "agent-files/codex/review-sidecar.toml",
+      "target": "review-sidecar.toml"
+    }
+  ]
+}
+EOF
+
+cat > "$CODEX_CONFLICT_EXTENSION_DIR/agent-files/codex/review-sidecar.toml" << 'EOF'
+name = "conflicting-review-sidecar"
+description = "conflicting codex agent file"
+EOF
+
+if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$CODEX_CONFLICT_EXTENSION_DIR" > "$TMPDIR/init-ext-codex-conflict.log" 2>&1); then
+  echo "Assertion failed: extension add must reject bundled Codex target collisions"
+  cat "$TMPDIR/init-ext-codex-conflict.log"
+  exit 1
+fi
+assert_contains "$TMPDIR/init-ext-codex-conflict.log" "already owned by AI Factory bundled Codex agent files" "bundled Codex target collision must be rejected with a clear message"
+
+echo "codex extension agent file conflict smoke tests passed"
 
 # -------------------------------------------------------------------
 # Unsafe managed agent file path smoke: deselecting an agent must not

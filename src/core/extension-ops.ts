@@ -1,6 +1,6 @@
 import path from 'path';
 import type { AgentFileSource, AgentInstallation, AiFactoryConfig, ExtensionRecord } from './config.js';
-import { findAgentConfig, hydrateProjectAgentRegistry } from './agents.js';
+import { AGENT_IDS, findAgentConfig, hydrateProjectAgentRegistry } from './agents.js';
 import {
   type ExtensionManifest,
   classifyExtensionSource,
@@ -358,9 +358,20 @@ export async function assertNoAgentFileConflicts(
     }
   }
 
-  const bundledClaudeFiles = await getAvailableSubagents();
-  for (const relPath of bundledClaudeFiles) {
-    ownership.set(`claude::${relPath}`, 'AI Factory bundled Claude agent files');
+  const bundledRuntimeIds = [AGENT_IDS.claude, AGENT_IDS.codex];
+  for (const runtimeId of bundledRuntimeIds) {
+    const bundledFiles = await getAvailableSubagents(runtimeId);
+    if (bundledFiles.length === 0) {
+      continue;
+    }
+
+    const ownerLabel = runtimeId === AGENT_IDS.claude
+      ? 'AI Factory bundled Claude agent files'
+      : 'AI Factory bundled Codex agent files';
+
+    for (const relPath of bundledFiles) {
+      ownership.set(`${runtimeId}::${relPath}`, ownerLabel);
+    }
   }
 
   for (const agentFile of manifest.agentFiles ?? []) {
