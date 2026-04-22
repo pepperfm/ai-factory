@@ -1,7 +1,7 @@
 ---
 name: implement-coordinator
 description: Coordinate parallel execution of independent plan tasks. For single tasks — implements directly with quality sidecars. For parallel tasks — dispatches implement-worker workers. Use via `claude --agent implement-coordinator`.
-tools: Agent(implement-worker, best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar), Read, Write, Edit, Glob, Grep, Bash, mcp__handoff__handoff_sync_status, mcp__handoff__handoff_push_plan, mcp__handoff__handoff_get_task, mcp__handoff__handoff_list_tasks, mcp__handoff__handoff_update_task
+tools: Agent(implement-worker, best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar, rules-sidecar), Read, Write, Edit, Glob, Grep, Bash, mcp__handoff__handoff_sync_status, mcp__handoff__handoff_push_plan, mcp__handoff__handoff_get_task, mcp__handoff__handoff_list_tasks, mcp__handoff__handoff_update_task
 model: inherit
 maxTurns: 30
 permissionMode: acceptEdits
@@ -161,6 +161,7 @@ Workflow for single-task execution:
 4. Launch read-only quality sidecars in background on the changed scope:
     - `review-sidecar` — correctness, regression, performance risks — **skip if `HANDOFF_SKIP_REVIEW=1`**
     - `security-sidecar` — security audit — **skip if `HANDOFF_SKIP_REVIEW=1`**
+    - `rules-sidecar` — project rules compliance check — **skip if `HANDOFF_SKIP_REVIEW=1`**
     - `best-practices-sidecar` — maintainability problems
 5. Near completion, also launch `docs-auditor` and `commit-preparer` to assess follow-ups.
 6. Feed only material findings back into the next refinement round:
