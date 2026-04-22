@@ -187,7 +187,7 @@ If `HANDOFF_TASK_ID` is missing → skip all MCP sync for this run.
 **Docs policy (inline mode, driven by `--docs`):**
 
 - `--docs=yes` → after completion, show the docs checkpoint (same AskUserQuestion as `Docs: yes` in regular mode) and route changes through `/aif-docs`.
-- `--docs=no` → skip the checkpoint, emit `WARN [docs] --docs=no in inline mode; skipping documentation checkpoint`.
+- `--docs=no` → suppress the documentation checkpoint, emit `WARN [docs] --docs=no in inline mode; documentation checkpoint skipped`.
 - `--docs=warn` (default) → emit `WARN [docs] Inline mode default is warn-only; documentation checkpoint skipped. Pass --docs=yes to enable.`
 
 **Context maintenance in inline mode:**
