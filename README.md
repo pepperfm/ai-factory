@@ -38,6 +38,7 @@ ai-factory init
 ---
 
 ## Installation
+
 ### Using npm
 
 ```bash

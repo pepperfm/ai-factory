@@ -502,6 +502,11 @@ AIF_MCP_SECTION=$(awk '
   capture && /^---$/ { exit }
   capture { print }
 ' "$ROOT_DIR/skills/aif/SKILL.md")
+DOCS_MCP_SECTION=$(awk '
+  /^## MCP Configuration$/ { capture=1; next }
+  capture && /^## / { exit }
+  capture { print }
+' "$ROOT_DIR/docs/configuration.md")
 
 if [[ -z "$AIF_MCP_SECTION" ]]; then
     fail "/aif MCP Configuration section missing"
@@ -527,10 +532,34 @@ else
     fail "/aif MCP section missing GitHub Copilot runtime contract"
 fi
 
-if printf '%s\n' "$AIF_MCP_SECTION" | grep -Eiq 'all (supported )?(agents|runtimes).*(mcpServers)|mcpServers.*all (supported )?(agents|runtimes)'; then
+if printf '%s\n' "$AIF_MCP_SECTION" | grep -Eiq '(all|every|any).*(supported )?(agents|runtimes).*(mcpServers)|mcpServers.*(all|every|any).*(supported )?(agents|runtimes)|(works|work).*(across|for).*(agents|runtimes).*(mcpServers)'; then
     fail "/aif MCP section still implies universal mcpServers usage"
 else
     pass "/aif MCP section does not imply universal mcpServers usage"
+fi
+
+if [[ -z "$DOCS_MCP_SECTION" ]]; then
+    fail "docs MCP Configuration section missing"
+else
+    pass "docs MCP Configuration section present"
+fi
+
+if printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq '../skills/aif/SKILL.md#mcp-configuration' && printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fqi 'source of truth'; then
+    pass "docs MCP section links to canonical /aif MCP source-of-truth"
+else
+    fail "docs MCP section must link to canonical /aif MCP source-of-truth"
+fi
+
+if printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq 'mcpServers.<server>' && printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq 'mcp.<server>' && printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq 'servers.<server>'; then
+    pass "docs MCP section includes runtime key mapping reminders"
+else
+    fail "docs MCP section missing runtime key mapping reminders"
+fi
+
+if printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq '| Runtime | Root key | Entry shape |'; then
+    fail "docs MCP section reintroduced duplicated runtime matrix table"
+else
+    pass "docs MCP section avoids duplicated runtime matrix table"
 fi
 
 # skills_cli_agent_flag patterns

@@ -214,13 +214,15 @@ AI Factory can configure these MCP servers:
 
 Configuration saved to agent's settings file (e.g. `.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for GitHub Copilot, `.roo/mcp.json` for Roo Code, `.kilocode/mcp.json` for Kilo Code, `opencode.json` for OpenCode).
 
-### Runtime Format Matrix
+### Runtime Format Contract
 
-| Runtime | Root key | Entry shape |
-|---------|----------|-------------|
-| Standard MCP runtimes (Claude Code, Cursor, Roo Code, Kilo Code, Qwen Code) | `mcpServers` | `{ "command": "...", "args": [...], "env": {...} }` |
-| OpenCode | `mcp` | `{ "type": "local", "command": ["...", "..."], "environment": {...} }` |
-| GitHub Copilot | `servers` | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }` |
+Source of truth for runtime MCP shapes and wrapper examples:
+[`skills/aif/SKILL.md#MCP Configuration`](../skills/aif/SKILL.md#mcp-configuration)
+
+Quick key mapping:
+- Standard MCP runtimes use `mcpServers.<server>`
+- OpenCode uses `mcp.<server>`
+- GitHub Copilot uses `servers.<server>`
 
 ### Environment Variables
 
@@ -231,42 +233,7 @@ export GITHUB_TOKEN="ghp_your_token"
 export DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 ```
 
-Examples by runtime:
-
-```json
-{
-  "mcpServers": {
-    "github": {
-      "env": { "GITHUB_TOKEN": "ghp_your_token" }
-    }
-  }
-}
-```
-
-```json
-{
-  "mcp": {
-    "github": {
-      "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
-      "environment": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
-    }
-  }
-}
-```
-
-```json
-{
-  "servers": {
-    "github": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_TOKEN": "${env:GITHUB_TOKEN}" }
-    }
-  }
-}
-```
+Runtime-specific wrapper examples are intentionally centralized in the `/aif` skill section above to avoid docs drift.
 
 ## Project Structure
 
