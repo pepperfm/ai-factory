@@ -212,24 +212,57 @@ AI Factory can configure these MCP servers:
 | Chrome Devtools | Browser inspection, debugging, performance | - |
 | Playwright | Browser automation, web testing | - |
 
-Configuration saved to agent's settings file (e.g. `.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for GitHub Copilot, `.roo/mcp.json` for Roo Code, `.kilocode/mcp.json` for Kilo Code, `opencode.json` for OpenCode). GitHub Copilot uses `servers` as the root object in `mcp.json`; other standard agents use `mcpServers` (OpenCode uses `mcp`).
+Configuration saved to agent's settings file (e.g. `.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for GitHub Copilot, `.roo/mcp.json` for Roo Code, `.kilocode/mcp.json` for Kilo Code, `opencode.json` for OpenCode).
+
+### Runtime Format Matrix
+
+| Runtime | Root key | Entry shape |
+|---------|----------|-------------|
+| Standard MCP runtimes (Claude Code, Cursor, Roo Code, Kilo Code, Qwen Code) | `mcpServers` | `{ "command": "...", "args": [...], "env": {...} }` |
+| OpenCode | `mcp` | `{ "type": "local", "command": ["...", "..."], "environment": {...} }` |
+| GitHub Copilot | `servers` | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }` |
 
 ### Environment Variables
 
-MCP configs use `${VAR}` placeholders for credentials (GitHub Copilot receives `${env:VAR}` in `.vscode/mcp.json`). Set them before launching the agent:
+MCP configs use `${VAR}` placeholders for credentials. OpenCode stores credentials under `environment`, while GitHub Copilot receives `${env:VAR}` in `.vscode/mcp.json`. Set them before launching the agent:
 
 ```bash
 export GITHUB_TOKEN="ghp_your_token"
 export DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 ```
 
-Or replace the placeholders with actual values directly in the config file:
+Examples by runtime:
 
 ```json
 {
   "mcpServers": {
     "github": {
       "env": { "GITHUB_TOKEN": "ghp_your_token" }
+    }
+  }
+}
+```
+
+```json
+{
+  "mcp": {
+    "github": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
+      "environment": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
+    }
+  }
+}
+```
+
+```json
+{
+  "servers": {
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "${env:GITHUB_TOKEN}" }
     }
   }
 }
