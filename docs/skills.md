@@ -125,13 +125,23 @@ Executes the plan:
 /aif-implement @my-custom-plan.md # Execute using an explicit plan file
 /aif-implement 5      # Start from task #5
 /aif-implement status # Check progress
+/aif-implement --without-plan add GET /healthz returning {"status":"ok"} # Inline one-shot task, no plan file
 ```
 - **Reads skill-context first** (`.ai-factory/skill-context/aif-implement/SKILL.md`) and only uses limited recent patch fallback when needed
 - Finds plan file (`@plan-file` if provided; otherwise branch-based `paths.plans/<branch>.md`, then a single named full plan in `paths.plans`, then `paths.plan`, then `paths.fix_plan` → redirects to `/aif-fix`)
 - `--list` mode is read-only: shows available plan files and exits
+- `--without-plan <description>` mode (inline):
+  - Executes exactly one small task from the description — no plan file created, read, or updated
+  - Mutually exclusive with `@plan-file`, `status`, and task id
+  - Skips `TaskList` / checkbox updates, does **not** create `FIX_PLAN.md` or `paths.patches` entries (use `/aif-fix` for bugs, not this flag)
+  - Loads the same project context as regular mode (config, `DESCRIPTION.md`, `ARCHITECTURE.md`, rules, skill-context)
+  - Tests are written only if the description explicitly asks for them
+  - Redirects to `/aif-plan fast <description>` when the description looks too broad for a one-shot task
+  - Optional `--docs=yes|no|warn` (default: `warn`) — `yes` runs the docs checkpoint via `/aif-docs`, `no` silences the warn line, `warn` emits `WARN [docs]` only
+  - Supports Handoff via `HANDOFF_TASK_ID` env var with a synthetic `- [ ] <description>` plan pushed through `handoff_push_plan`; when `HANDOFF_TASK_ID` is unset, MCP sync is skipped entirely
 - Executes tasks one by one
 - Prompts for commits at checkpoints
-- Docs policy after completion:
+- Docs policy after completion (plan-backed modes):
   - `Docs: yes` → mandatory documentation checkpoint (update docs / create feature page / skip)
   - `Docs: no` or unset → `WARN [docs]` only (no mandatory checkpoint)
   - Docs updates are always routed through `/aif-docs`
