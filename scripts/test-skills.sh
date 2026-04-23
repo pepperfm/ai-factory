@@ -514,25 +514,25 @@ else
     pass "/aif MCP Configuration section present"
 fi
 
-if printf '%s\n' "$AIF_MCP_SECTION" | grep -Fq "depends on the runtime"; then
+if grep -Fq "depends on the runtime" <<< "$AIF_MCP_SECTION"; then
     pass "/aif MCP section states that MCP shape depends on runtime"
 else
     fail "/aif MCP section does not state runtime-dependent MCP shape"
 fi
 
-if printf '%s\n' "$AIF_MCP_SECTION" | grep -Fq "OpenCode" && printf '%s\n' "$AIF_MCP_SECTION" | grep -Fq 'mcp.<server>' && printf '%s\n' "$AIF_MCP_SECTION" | grep -Fq '"type": "local"'; then
+if grep -Fq "OpenCode" <<< "$AIF_MCP_SECTION" && grep -Fq 'mcp.<server>' <<< "$AIF_MCP_SECTION" && grep -Fq '"type": "local"' <<< "$AIF_MCP_SECTION"; then
     pass "/aif MCP section includes OpenCode runtime contract"
 else
     fail "/aif MCP section missing OpenCode runtime contract"
 fi
 
-if printf '%s\n' "$AIF_MCP_SECTION" | grep -Fq "GitHub Copilot" && printf '%s\n' "$AIF_MCP_SECTION" | grep -Fq 'servers.<server>' && printf '%s\n' "$AIF_MCP_SECTION" | grep -Fq '"type": "stdio"'; then
+if grep -Fq "GitHub Copilot" <<< "$AIF_MCP_SECTION" && grep -Fq 'servers.<server>' <<< "$AIF_MCP_SECTION" && grep -Fq '"type": "stdio"' <<< "$AIF_MCP_SECTION"; then
     pass "/aif MCP section includes GitHub Copilot runtime contract"
 else
     fail "/aif MCP section missing GitHub Copilot runtime contract"
 fi
 
-if printf '%s\n' "$AIF_MCP_SECTION" | grep -Eiq '(all|every|any).*(supported )?(agents|runtimes).*(mcpServers)|mcpServers.*(all|every|any).*(supported )?(agents|runtimes)|(works|work).*(across|for).*(agents|runtimes).*(mcpServers)'; then
+if grep -Eiq '(all|every|any).*(supported )?(agents|runtimes).*(mcpServers)|mcpServers.*(all|every|any).*(supported )?(agents|runtimes)|(works|work).*(across|for).*(agents|runtimes).*(mcpServers)' <<< "$AIF_MCP_SECTION"; then
     fail "/aif MCP section still implies universal mcpServers usage"
 else
     pass "/aif MCP section does not imply universal mcpServers usage"
@@ -544,19 +544,19 @@ else
     pass "docs MCP Configuration section present"
 fi
 
-if printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq '../skills/aif/SKILL.md#mcp-configuration' && printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fqi 'source of truth'; then
+if grep -Fq '../skills/aif/SKILL.md#mcp-configuration' <<< "$DOCS_MCP_SECTION" && grep -Fq 'Source of truth' <<< "$DOCS_MCP_SECTION"; then
     pass "docs MCP section links to canonical /aif MCP source-of-truth"
 else
     fail "docs MCP section must link to canonical /aif MCP source-of-truth"
 fi
 
-if printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq 'mcpServers.<server>' && printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq 'mcp.<server>' && printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq 'servers.<server>'; then
+if grep -Fq 'mcpServers.<server>' <<< "$DOCS_MCP_SECTION" && grep -Fq 'mcp.<server>' <<< "$DOCS_MCP_SECTION" && grep -Fq 'servers.<server>' <<< "$DOCS_MCP_SECTION"; then
     pass "docs MCP section includes runtime key mapping reminders"
 else
     fail "docs MCP section missing runtime key mapping reminders"
 fi
 
-if printf '%s\n' "$DOCS_MCP_SECTION" | grep -Fq '| Runtime | Root key | Entry shape |'; then
+if grep -Fq '| Runtime | Root key | Entry shape |' <<< "$DOCS_MCP_SECTION"; then
     fail "docs MCP section reintroduced duplicated runtime matrix table"
 else
     pass "docs MCP section avoids duplicated runtime matrix table"
