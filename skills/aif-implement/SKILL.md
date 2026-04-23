@@ -144,7 +144,7 @@ Use the resolved config from Step 0:
 - `.ai-factory/skill-context/aif-implement/SKILL.md` — MANDATORY if the file exists (same precedence and enforcement as regular mode in Step 0.1)
 - `language.ui`, `language.artifacts`
 
-Skip: plan file discovery, fix-plan discovery, resume/recovery reconciliation, TaskList loading, checkbox state comparison.
+**Plan artifact policy:** inline mode does NOT load or use plan/fix-plan files. Plan files are never read, parsed, or executed. A minimal existence probe is permitted (see the surprise-warn section above) solely to emit the `WARN [inline]` line — nothing is read from disk. Also skip: resume/recovery reconciliation, TaskList loading, checkbox state comparison.
 
 **Execute the task (one-shot):**
 
@@ -152,7 +152,7 @@ Skip: plan file discovery, fix-plan discovery, resume/recovery reconciliation, T
 2. Read only files relevant to the described scope
 3. Apply changes following existing code patterns and skill-context rules
 4. Apply verbose logging per `references/LOGGING-GUIDE.md`
-5. Write tests ONLY if the description explicitly says so (e.g. "with tests", "add tests for X")
+5. Do not add tests by default. Add them only if the description explicitly requests tests (e.g. "with tests", "add tests for X") OR if existing project conventions / touched code paths clearly require them (e.g. a test file mirrors every source file in the area being changed, or a RULES.md / skill-context rule mandates test coverage for this kind of change). When in doubt, prefer NO tests and let the user follow up via `/aif-plan` if wider test coverage is needed.
 6. Verify the change compiles/runs and the described behavior works
 
 **Prohibited in inline mode:**
