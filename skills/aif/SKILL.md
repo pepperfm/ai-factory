@@ -500,7 +500,21 @@ Install skills, configure MCP, generate `AGENTS.md` in resolved `language.artifa
 
 ## MCP Configuration
 
-### GitHub
+AI Factory writes MCP config to `{{settings_file}}`, but the outer settings shape depends on the runtime.
+
+### Runtime Format Matrix
+
+| Runtime | Write under | Entry shape |
+|---------|-------------|-------------|
+| Standard MCP runtimes (Claude Code, Cursor, Roo Code, Kilo Code, Qwen Code) | `mcpServers.<server>` | `{ "command": "...", "args": [...], "env": {...} }` |
+| OpenCode | `mcp.<server>` | `{ "type": "local", "command": ["...", "..."], "environment": {...} }` |
+| GitHub Copilot | `servers.<server>` | `{ "type": "stdio", "command": "...", "args": [...], "env": {...} }` |
+
+Use the canonical server templates below as the source values, then wrap them using the runtime-specific format above.
+
+### Canonical Server Templates
+
+#### GitHub
 **When:** Project has `.git` or uses GitHub
 
 ```json
@@ -513,7 +527,7 @@ Install skills, configure MCP, generate `AGENTS.md` in resolved `language.artifa
 }
 ```
 
-### Postgres
+#### Postgres
 **When:** Uses PostgreSQL, Prisma, Drizzle, Supabase
 
 ```json
@@ -526,7 +540,7 @@ Install skills, configure MCP, generate `AGENTS.md` in resolved `language.artifa
 }
 ```
 
-### Filesystem
+#### Filesystem
 **When:** Needs advanced file operations
 
 ```json
@@ -538,7 +552,7 @@ Install skills, configure MCP, generate `AGENTS.md` in resolved `language.artifa
 }
 ```
 
-### Playwright
+#### Playwright
 **When:** Needs browser automation, web testing, interaction via accessibility tree
 
 ```json
@@ -549,6 +563,50 @@ Install skills, configure MCP, generate `AGENTS.md` in resolved `language.artifa
   }
 }
 ```
+
+### Runtime-Specific Wrapper Examples
+
+Standard MCP runtimes (`mcpServers`):
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+OpenCode (`mcp` + `type: "local"` + command array):
+
+```json
+{
+  "mcp": {
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+GitHub Copilot (`servers` + `type: "stdio"`):
+
+```json
+{
+  "servers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}
+```
+
+For GitHub Copilot, convert credential placeholders from `${VAR}` to `${env:VAR}` in the final config file. For OpenCode, use `environment` instead of `env` when the server requires credentials.
 
 ---
 

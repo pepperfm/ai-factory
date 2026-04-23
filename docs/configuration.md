@@ -212,28 +212,28 @@ AI Factory can configure these MCP servers:
 | Chrome Devtools | Browser inspection, debugging, performance | - |
 | Playwright | Browser automation, web testing | - |
 
-Configuration saved to agent's settings file (e.g. `.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for GitHub Copilot, `.roo/mcp.json` for Roo Code, `.kilocode/mcp.json` for Kilo Code, `opencode.json` for OpenCode). GitHub Copilot uses `servers` as the root object in `mcp.json`; other standard agents use `mcpServers` (OpenCode uses `mcp`).
+Configuration saved to agent's settings file (e.g. `.mcp.json` for Claude Code, `.cursor/mcp.json` for Cursor, `.vscode/mcp.json` for GitHub Copilot, `.roo/mcp.json` for Roo Code, `.kilocode/mcp.json` for Kilo Code, `opencode.json` for OpenCode).
+
+### Runtime Format Contract
+
+Source of truth for runtime MCP shapes and wrapper examples:
+[`skills/aif/SKILL.md#MCP Configuration`](../skills/aif/SKILL.md#mcp-configuration)
+
+Quick key mapping:
+- Standard MCP runtimes use `mcpServers.<server>`
+- OpenCode uses `mcp.<server>`
+- GitHub Copilot uses `servers.<server>`
 
 ### Environment Variables
 
-MCP configs use `${VAR}` placeholders for credentials (GitHub Copilot receives `${env:VAR}` in `.vscode/mcp.json`). Set them before launching the agent:
+MCP configs use `${VAR}` placeholders for credentials. OpenCode stores credentials under `environment`, while GitHub Copilot receives `${env:VAR}` in `.vscode/mcp.json`. Set them before launching the agent:
 
 ```bash
 export GITHUB_TOKEN="ghp_your_token"
 export DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 ```
 
-Or replace the placeholders with actual values directly in the config file:
-
-```json
-{
-  "mcpServers": {
-    "github": {
-      "env": { "GITHUB_TOKEN": "ghp_your_token" }
-    }
-  }
-}
-```
+Runtime-specific wrapper examples are intentionally centralized in the `/aif` skill section above to avoid docs drift.
 
 ## Project Structure
 
