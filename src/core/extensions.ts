@@ -424,6 +424,11 @@ function isSafeRelativeAssetPath(filePath: string): boolean {
   return !normalized.split('/').some(segment => segment === '..' || segment.length === 0);
 }
 
+function isCanonicalRelativeAssetPath(filePath: string): boolean {
+  const normalized = path.posix.normalize(filePath.replaceAll('\\', '/'));
+  return normalized === filePath;
+}
+
 function validateRuntimeAwareAgentDefinition(agent: ExtensionAgentDef, extensionName: string): void {
   if (!agent.id || !agent.displayName || !agent.configDir || !agent.skillsDir) {
     throw new Error(
@@ -464,6 +469,12 @@ function validateExtensionAgentFile(manifest: ExtensionManifest, agentFile: Exte
   if (!isSafeRelativeAssetPath(agentFile.target)) {
     throw new Error(
       `Extension "${manifest.name}" agentFiles entry for runtime "${agentFile.runtime}" has an invalid "target" path.`,
+    );
+  }
+
+  if (!isCanonicalRelativeAssetPath(agentFile.target)) {
+    throw new Error(
+      `Extension "${manifest.name}" agentFiles entry for runtime "${agentFile.runtime}" must use a canonical "target" path without aliases like "./" or "nested/../".`,
     );
   }
 }

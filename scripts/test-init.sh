@@ -476,7 +476,7 @@ cat > "$CODEX_CONFLICT_EXTENSION_DIR/extension.json" << 'EOF'
     {
       "runtime": "codex",
       "source": "agent-files/codex/review-sidecar.toml",
-      "target": "review-sidecar.toml"
+      "target": "./review-sidecar.toml"
     }
   ]
 }
@@ -492,7 +492,7 @@ if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$
   cat "$TMPDIR/init-ext-codex-conflict.log"
   exit 1
 fi
-assert_contains "$TMPDIR/init-ext-codex-conflict.log" "already owned by AI Factory bundled Codex agent files" "bundled Codex target collision must be rejected with a clear message"
+assert_contains "$TMPDIR/init-ext-codex-conflict.log" "must use a canonical \"target\" path" "non-canonical bundled Codex target aliases must be rejected during validation"
 
 echo "codex extension agent file conflict smoke tests passed"
 
