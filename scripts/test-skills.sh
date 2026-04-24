@@ -488,12 +488,78 @@ else
 fi
 
 # settings_file patterns
-HARDCODED_SETTINGS=$(grep -rE '(\.mcp\.json|settings\.local\.json|\.cursor/mcp\.json|\.vscode/mcp\.json|\.qwen/settings\.json)' "$ROOT_DIR/skills/" "$ROOT_DIR/subagents/" --include='*.md' 2>/dev/null | grep -v '{{' | wc -l | tr -d ' ' || true)
+HARDCODED_SETTINGS=$(grep -rE '(opencode\.json|\.mcp\.json|settings\.local\.json|\.cursor/mcp\.json|\.vscode/mcp\.json|\.roo/mcp\.json|\.kilocode/mcp\.json|\.qwen/settings\.json)' "$ROOT_DIR/skills/" "$ROOT_DIR/subagents/" --include='*.md' 2>/dev/null | grep -v '{{' | wc -l | tr -d ' ' || true)
 if [[ "$HARDCODED_SETTINGS" -eq 0 ]]; then
     pass "no hardcoded settings_file in skills/ and subagents/"
 else
     fail "found $HARDCODED_SETTINGS hardcoded settings_file values (use {{settings_file}})"
-    grep -rEn '(\.mcp\.json|settings\.local\.json|\.cursor/mcp\.json|\.vscode/mcp\.json|\.qwen/settings\.json)' "$ROOT_DIR/skills/" "$ROOT_DIR/subagents/" --include='*.md' 2>/dev/null | grep -v '{{' | sed 's/^/      /'
+    grep -rEn '(opencode\.json|\.mcp\.json|settings\.local\.json|\.cursor/mcp\.json|\.vscode/mcp\.json|\.roo/mcp\.json|\.kilocode/mcp\.json|\.qwen/settings\.json)' "$ROOT_DIR/skills/" "$ROOT_DIR/subagents/" --include='*.md' 2>/dev/null | grep -v '{{' | sed 's/^/      /'
+fi
+
+# /aif MCP runtime-contract wording
+AIF_MCP_SECTION=$(awk '
+  /^## MCP Configuration$/ { capture=1; next }
+  capture && /^---$/ { exit }
+  capture { print }
+' "$ROOT_DIR/skills/aif/SKILL.md")
+DOCS_MCP_SECTION=$(awk '
+  /^## MCP Configuration$/ { capture=1; next }
+  capture && /^## / { exit }
+  capture { print }
+' "$ROOT_DIR/docs/configuration.md")
+
+if [[ -z "$AIF_MCP_SECTION" ]]; then
+    fail "/aif MCP Configuration section missing"
+else
+    pass "/aif MCP Configuration section present"
+fi
+
+if grep -Fq "depends on the runtime" <<< "$AIF_MCP_SECTION"; then
+    pass "/aif MCP section states that MCP shape depends on runtime"
+else
+    fail "/aif MCP section does not state runtime-dependent MCP shape"
+fi
+
+if grep -Fq "OpenCode" <<< "$AIF_MCP_SECTION" && grep -Fq 'mcp.<server>' <<< "$AIF_MCP_SECTION" && grep -Fq '"type": "local"' <<< "$AIF_MCP_SECTION"; then
+    pass "/aif MCP section includes OpenCode runtime contract"
+else
+    fail "/aif MCP section missing OpenCode runtime contract"
+fi
+
+if grep -Fq "GitHub Copilot" <<< "$AIF_MCP_SECTION" && grep -Fq 'servers.<server>' <<< "$AIF_MCP_SECTION" && grep -Fq '"type": "stdio"' <<< "$AIF_MCP_SECTION"; then
+    pass "/aif MCP section includes GitHub Copilot runtime contract"
+else
+    fail "/aif MCP section missing GitHub Copilot runtime contract"
+fi
+
+if grep -Eiq '(all|every|any).*(supported )?(agents|runtimes).*(mcpServers)|mcpServers.*(all|every|any).*(supported )?(agents|runtimes)|(works|work).*(across|for).*(agents|runtimes).*(mcpServers)' <<< "$AIF_MCP_SECTION"; then
+    fail "/aif MCP section still implies universal mcpServers usage"
+else
+    pass "/aif MCP section does not imply universal mcpServers usage"
+fi
+
+if [[ -z "$DOCS_MCP_SECTION" ]]; then
+    fail "docs MCP Configuration section missing"
+else
+    pass "docs MCP Configuration section present"
+fi
+
+if grep -Fq '../skills/aif/SKILL.md#mcp-configuration' <<< "$DOCS_MCP_SECTION" && grep -Fq 'Source of truth' <<< "$DOCS_MCP_SECTION"; then
+    pass "docs MCP section links to canonical /aif MCP source-of-truth"
+else
+    fail "docs MCP section must link to canonical /aif MCP source-of-truth"
+fi
+
+if grep -Fq 'mcpServers.<server>' <<< "$DOCS_MCP_SECTION" && grep -Fq 'mcp.<server>' <<< "$DOCS_MCP_SECTION" && grep -Fq 'servers.<server>' <<< "$DOCS_MCP_SECTION"; then
+    pass "docs MCP section includes runtime key mapping reminders"
+else
+    fail "docs MCP section missing runtime key mapping reminders"
+fi
+
+if grep -Fq '| Runtime | Root key | Entry shape |' <<< "$DOCS_MCP_SECTION"; then
+    fail "docs MCP section reintroduced duplicated runtime matrix table"
+else
+    pass "docs MCP section avoids duplicated runtime matrix table"
 fi
 
 # skills_cli_agent_flag patterns

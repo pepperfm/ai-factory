@@ -98,7 +98,16 @@ ai-factory extension update my-extension --force
 ai-factory extension remove my-extension
 ```
 
-For v1 -> v2 migration, run `ai-factory upgrade` to rename old skills to the new `aif-*` prefix.
+### `ai-factory init` Flags
+
+- `--agents` - Comma-separated target agents (for example `claude,codex`)
+- `--skills` - Comma-separated skill set to install instead of full defaults
+- `--no-skills` - Skip base skill installation (useful when only MCP setup is needed)
+- `--mcp` - Comma-separated MCP servers to configure (`github`, `postgres`, `filesystem`, `chrome-devtools`, `playwright`)
+
+### Upgrade from v1 to v2
+
+Run `ai-factory upgrade` to migrate old bare-named skills (`commit`, `feature`, etc.) to `aif-*` names. Custom skills are preserved.
 
 `ai-factory update` now:
 - Checks for extension updates from their sources (npm, GitHub, etc.) before updating base skills
@@ -106,6 +115,15 @@ For v1 -> v2 migration, run `ai-factory upgrade` to rename old skills to the new
 - For runtimes with managed agent files, refreshes bundled package-managed agent files and prints a separate `Agent files` status block
 - For Codex CLI, also refreshes managed `.codex/config.toml` and prints a separate `Config files` status block; drift in that file may be overwritten to restore AI-Factory-managed defaults
 - Skills newly available in the package but not previously installed are shown as `skipped` (not auto-installed)
+
+### Documentation Commands
+
+```bash
+/aif-docs
+/aif-docs --web
+```
+
+`/aif-docs` refreshes README + `docs/` from the current project context. `--web` additionally emits a static documentation site (`docs-html/`).
 
 ## Next Steps
 
