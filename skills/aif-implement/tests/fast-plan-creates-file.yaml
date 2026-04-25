@@ -61,7 +61,7 @@ fixtures:
 
         ## Tasks
 
-        - [ ] Task 1: Create `test.txt` at the repo root containing exactly the text `Hello world` (no trailing newline)
+        - [ ] Task 1: Use the `Write` tool to create `test.txt` at the repo root containing exactly the text `Hello world` (no trailing newline). Do not use Bash to echo/printf the file — the test asserts the Write tool call.
 
 user_responses:
   # Completion — docs checkpoint is warn-only because Docs: no, but the skill
@@ -84,16 +84,23 @@ assertions:
       file_path: "\\.ai-factory/PLAN\\.md$"
     weight: 2
 
-  # Positive — the task's output file was produced. The skill may legitimately
-  # use either Write or Bash (printf/echo) for a one-line file; ai-tester has
-  # no OR between assertions, so the completion report is the reliable anchor.
-  # Step 5 of aif-implement lists modified files by name in its final message.
-  # (Content integrity isn't asserted here — the completion text lists the
-  # file name, not its bytes; that would require a stronger `Write`-only path.)
+  # Positive — the task's output file was produced with the EXACT requested
+  # content. The plan task explicitly mandates the Write tool (not Bash) so
+  # the assertion can pin both file path and content bytes.
+  - id: writes-test-txt-with-hello-world
+    type: tool_called
+    tool: Write
+    args_match:
+      file_path: "(^|/)test\\.txt$"
+      content: "Hello world"
+    weight: 3
+
+  # Defense in depth — the completion report mentions the produced file by
+  # name (Step 5 of aif-implement lists modified files in its final message).
   - id: reports-test-txt-created
     type: output_contains
     pattern: "(?i)test\\.txt"
-    weight: 3
+    weight: 1
 
   # Positive — the plan's checkbox was flipped to `- [x]` per Step 3.6.
   - id: updates-plan-checkbox

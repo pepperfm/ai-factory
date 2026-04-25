@@ -166,7 +166,16 @@ Use the resolved config from Step 0:
 
 **Handoff inline support (manual mode only):**
 
-If the `HANDOFF_TASK_ID` env var is set AND `HANDOFF_MODE` is NOT `1`:
+> Naming clarification: `--without-plan` means "without a **local** plan artifact on disk" (no `paths.plan` / `paths.plans/*` / `paths.fix_plan`). When a Handoff task is linked, the task is still represented as a synthetic plan **inside Handoff** via `handoff_push_plan` — that's a remote representation, not a local file. The local-no-plan contract is preserved; only the remote sync surface is unchanged.
+
+**When `HANDOFF_MODE` is `1` (autonomous Handoff agent invoked inline mode):**
+
+- Do NOT call any `mcp__handoff__*` tool (the coordinator manages status/sync directly — same rule as Step 0 (pre)).
+- Do NOT create local plan artifacts (the regular Prohibited list above still applies).
+- Do NOT switch branches, create worktrees, merge worktrees, or otherwise alter the branch/worktree the coordinator set up — inline mode operates on the working tree it was invoked in.
+- Proceed with the one-shot execution; the coordinator marks the task complete after the skill returns.
+
+**When `HANDOFF_MODE` is NOT `1` and `HANDOFF_TASK_ID` is set (manual Claude Code session linked to a Handoff task):**
 
 1. Build synthetic plan content:
 

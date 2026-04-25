@@ -6,9 +6,13 @@ description: |
   Verifies:
   (1) the described file is actually written with the expected content;
   (2) the skill does NOT Read `.ai-factory/PLAN.md`, `.ai-factory/FIX_PLAN.md`,
-      or anything under `.ai-factory/plans/`;
-  (3) the skill does NOT Glob the plans directory;
-  (4) the skill does NOT Write any plan/fix-plan/patch artifacts.
+      or anything under `.ai-factory/plans/` (the real "no load" guarantee);
+  (3) the skill does NOT Write or Edit any plan/fix-plan/patch artifacts.
+
+  NOTE on Glob: a minimal Glob/exists probe of plan paths IS allowed in inline
+  mode, solely so Step 0.inline can emit `WARN [inline]` when an existing plan
+  file is being intentionally ignored. The contract is "no Read/Write/Edit of
+  plan artifacts," not "no probe at all" — see Step 0.inline in SKILL.md.
 skill: aif-implement
 argument: '--without-plan create a file named test.txt at the repo root containing exactly the text "Hello world"'
 max_turns: 40
