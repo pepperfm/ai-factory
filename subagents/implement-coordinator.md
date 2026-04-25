@@ -173,6 +173,7 @@ Workflow for single-task execution:
     - correctness bugs
     - clear architecture/rules violations
     - concrete best-practice problems in changed code
+    - any verdict-style sidecar result with `Verdict: FAIL`; treat `Verdict: WARN` as non-blocking unless it identifies an explicit hard blocker
 7. If a material blocker remains, fix and re-verify (max 2 refinement rounds).
 8. Do not loop forever on cosmetic advice alone.
 

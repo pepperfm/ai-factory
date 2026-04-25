@@ -45,12 +45,12 @@ If you edit these files manually, reload them in Claude Code with `/agents` or b
 | `plan-coordinator` | iteratively launch `plan-polisher` in a critique→improve loop until the plan passes or the iteration budget is exhausted. Defaults to `full` planning when the caller did not choose a mode. **Top-level agent only** | `inherit` | `Agent(plan-polisher), Read, Glob, Grep, Bash` |
 | `implement-coordinator` | parse plan dependency graph, implement single tasks directly with quality sidecars, dispatch `implement-worker` workers for parallel tasks, merge results. **Top-level agent only** | `inherit` | `Agent(implement-worker, best-practices-sidecar, commit-preparer, docs-auditor, review-sidecar, security-sidecar, rules-sidecar), Read, Write, Edit, Glob, Grep, Bash` |
 | `implement-worker` | isolated worktree worker for parallel task execution — implements one task, runs local quality checks, returns results to coordinator | `inherit` | `Read, Write, Edit, Glob, Grep, Bash` |
-| `best-practices-sidecar` | background read-only best-practices sidecar for current implementation scope | `inherit` | `Read, Glob, Grep, Bash` |
+| `best-practices-sidecar` | background read-only best-practices sidecar for current implementation scope | `inherit` | `Read, Glob, Grep` |
 | `plan-polisher` | create or refresh an `/aif-plan` artifact, run one local critique+refine cycle, and return whether another iteration is needed | `inherit` | `Read, Write, Edit, Glob, Grep, Bash` |
-| `commit-preparer` | background read-only commit preparation sidecar for current implementation scope | `sonnet` | `Read, Glob, Grep, Bash` |
-| `docs-auditor` | background read-only documentation drift sidecar for current implementation scope | `sonnet` | `Read, Glob, Grep, Bash` |
-| `review-sidecar` | background read-only code review sidecar for current implementation scope | `inherit` | `Read, Glob, Grep, Bash` |
-| `security-sidecar` | background read-only security audit sidecar for current implementation scope | `inherit` | `Read, Glob, Grep, Bash` |
+| `commit-preparer` | background read-only commit preparation sidecar for current implementation scope | `sonnet` | `Read, Glob, Grep` |
+| `docs-auditor` | background read-only documentation drift sidecar for current implementation scope | `sonnet` | `Read, Glob, Grep` |
+| `review-sidecar` | background read-only code review sidecar for current implementation scope | `inherit` | `Read, Glob, Grep` |
+| `security-sidecar` | background read-only security audit sidecar for current implementation scope | `inherit` | `Read, Glob, Grep` |
 | `rules-sidecar` | background read-only project rules sidecar for current implementation scope | `inherit` | `Read, Glob, Grep` |
 | `loop-orchestrator` | decide the next loop phase from `run.json` state | `sonnet` | `Read, Glob, Grep` |
 | `loop-planner` | build a short 3-5 step iteration plan | `haiku` | `Read, Glob, Grep` |
@@ -185,7 +185,9 @@ This lets the execution loop keep noisy review, security, docs-drift, commit-ana
 
 In Handoff automation, `HANDOFF_SKIP_REVIEW=1` is a broad review-family bypass: it intentionally skips `review-sidecar`, `security-sidecar`, and `rules-sidecar`. It does not skip `best-practices-sidecar`, `docs-auditor`, or `commit-preparer` when those are otherwise applicable.
 
-`rules-sidecar` uses a structured contract so the coordinator can consume its result predictably: `Verdict: PASS|WARN|FAIL`, `Blocking findings:`, `Non-blocking notes:`, and `Evidence:`.
+Compatibility note for the release that adds `rules-sidecar`: existing Handoff users who set `HANDOFF_SKIP_REVIEW=1` now bypass one additional review-family gate. Remove that flag when rules compliance should still run.
+
+`best-practices-sidecar`, `review-sidecar`, `security-sidecar`, and `rules-sidecar` use a structured verdict contract so the coordinator can consume their results predictably: `Verdict: PASS|WARN|FAIL`, `Blocking findings:`, `Non-blocking notes:`, and `Evidence:`. `docs-auditor` and `commit-preparer` keep their JSON contracts because they return routing data rather than gate findings.
 
 The loop prep workers are also good background candidates and are configured that way:
 - `loop-test-prep`

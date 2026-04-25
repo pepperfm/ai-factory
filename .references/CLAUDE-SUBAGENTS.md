@@ -393,7 +393,9 @@ Existing project agents in `.claude/agents/`:
 
 For `implement-coordinator`, `HANDOFF_SKIP_REVIEW=1` is intentionally a broad review-family bypass. It skips `review-sidecar`, `security-sidecar`, and `rules-sidecar`; it does not skip `best-practices-sidecar`, `docs-auditor`, or `commit-preparer` when those are otherwise applicable.
 
-`rules-sidecar` should return a structured result with `Verdict: PASS|WARN|FAIL`, `Blocking findings:`, `Non-blocking notes:`, and `Evidence:`.
+Compatibility note for the release that adds `rules-sidecar`: existing Handoff users who set `HANDOFF_SKIP_REVIEW=1` now bypass one additional review-family gate. Remove that flag when rules compliance should still run.
+
+`best-practices-sidecar`, `review-sidecar`, `security-sidecar`, and `rules-sidecar` should return structured results with `Verdict: PASS|WARN|FAIL`, `Blocking findings:`, `Non-blocking notes:`, and `Evidence:`. `docs-auditor` and `commit-preparer` keep their JSON contracts because they return routing data rather than gate findings.
 
 Manual coordinator validation requires an environment with the Claude CLI installed. Run `claude --agent implement-coordinator` on a small single-task plan and confirm `rules-sidecar` participates in the single-task quality-gate flow unless `HANDOFF_SKIP_REVIEW=1` is set.
 
