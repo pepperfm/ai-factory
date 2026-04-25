@@ -31,6 +31,7 @@
         "plan-coordinator.md",
         "plan-polisher.md",
         "review-sidecar.md",
+        "rules-sidecar.md",
         "security-sidecar.md"
       ],
       "mcp": {
@@ -260,6 +261,7 @@ your-project/
 │   │   ├── plan-coordinator.md
 │   │   ├── plan-polisher.md
 │   │   ├── review-sidecar.md
+│   │   ├── rules-sidecar.md
 │   │   └── security-sidecar.md
 │   ├── skills/
 │   │   ├── aif/
