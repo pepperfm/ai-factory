@@ -153,6 +153,7 @@ Verifies completed implementation against the plan:
 - **Git-aware diffing** — uses `git.base_branch` for branch-diff verification; no-git repositories fall back to recent commits / working tree instead of assuming `main`
 - **Issue remediation** — if issues found, first suggests `/aif-fix <issue summary>` (recommended), with optional direct fix in-session
 - **Follow-up suggestions** — if all green, suggests `/aif-security-checklist`, `/aif-review`, then `/aif-commit`
+- **Machine-readable result** — appends a final `aif-gate-result` JSON block with `status: pass|warn|fail`, `blocking`, `blockers`, `affected_files`, and `suggested_next`
 
 **Strict mode** (`--strict`) is recommended before merging: requires all tasks complete, build passing, tests passing, lint clean, zero TODOs in changed files, and passing architecture/rules/roadmap gates. For `feat`/`fix`/`perf`, missing roadmap milestone linkage is reported as a warning, not a failure.
 
@@ -414,6 +415,7 @@ Reviews staged changes or PR diffs:
 - Checks correctness, security, performance, and maintainability
 - Adds read-only context-gate findings (architecture/roadmap/rules) to review output
 - Uses `WARN` for non-blocking context drift and `ERROR` only for explicitly blocking review criteria
+- Appends a final `aif-gate-result` JSON block for Handoff/AIFHub and other orchestrators
 - If you only need the rules gate, use `/aif-rules-check`
 
 ### `/aif-rules-check [git ref]`
@@ -425,8 +427,8 @@ Runs a standalone read-only rules compliance gate:
 - Reads `.ai-factory/config.yaml` for `paths.rules_file`, `paths.rules`, `paths.plan`, `paths.plans`, `language.ui`, `git.enabled`, `git.base_branch`, `rules.base`, and any named `rules.<area>`
 - Resolves rules with graceful fallback: if `paths.rules_file` is omitted, it defaults to `.ai-factory/RULES.md`
 - Checks staged changes, working-tree diff, or a provided git ref against the resolved rules hierarchy
-- Uses standalone verdicts: `PASS` when checked rules are satisfied, `WARN` when rules are missing/ambiguous or no changed files are available, `FAIL` only for explicit hard-rule violations tied to rule text
-- Output sections: overall verdict, files checked, gate results, blocking violations, suggested fixes, suggested rule updates
+- Uses human standalone verdicts: `PASS` when checked rules are satisfied, `WARN` when rules are missing/ambiguous or no changed files are available, `FAIL` only for explicit hard-rule violations tied to rule text
+- Output sections: overall verdict, files checked, gate results, blocking violations, suggested fixes, suggested rule updates, and a final `aif-gate-result` JSON block
 - Remains read-only; if rules need to change, route that through `/aif-rules`
 
 - Config policy: config-aware; reads rule paths, optional active plan context, and git diff defaults from `config.yaml`
@@ -493,6 +495,8 @@ Security audit based on OWASP Top 10 and best practices:
 
 Each category includes a checklist, vulnerable/safe code examples (TypeScript, PHP), and an automated audit script.
 
+Audit outputs append a final `aif-gate-result` JSON block for full and category audits. The `ignore <item>` writer flow updates the configured security ignored-item artifact and only reports a gate result when it also performs an audit.
+
 **Ignoring items** — if a finding is intentionally accepted, mark it as ignored:
 ```
 /aif-security-checklist ignore no-csrf
@@ -534,5 +538,6 @@ The `--all` flag runs all three stages in sequence without inter-stage prompts. 
 ## See Also
 
 - [Development Workflow](workflow.md) — how workflow skills connect end-to-end
+- [Quality Gates](quality-gates.md) - machine-readable gate summary contract
 - [Reflex Loop](loop.md) — strict loop protocol for iterative quality gating
 - [Plan Files](plan-files.md) — where workflow artifacts are stored

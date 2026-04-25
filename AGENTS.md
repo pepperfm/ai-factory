@@ -114,8 +114,9 @@ Context gate policy for quality commands:
 - Roadmap mismatch is warning-first in normal mode, blocking in strict mode when mismatch is clear.
 - Missing roadmap milestone linkage for `feat`/`fix`/`perf` is warning-first by default, even in strict verify when a
   roadmap exists.
-- `/aif-rules-check` is the standalone rules-only companion and uses `PASS` / `WARN` / `FAIL`; `/aif-commit`,
-  `/aif-review`, and `/aif-verify` keep `WARN` / `ERROR`.
+- `/aif-rules-check` is the standalone rules-only companion and uses human `PASS` / `WARN` / `FAIL` labels.
+- `/aif-verify`, `/aif-review`, `/aif-security-checklist`, and `/aif-rules-check` append a final machine-readable
+  `aif-gate-result` JSON block with lowercase `pass` / `warn` / `fail` status values.
 
 ### Config-Aware Skills
 
@@ -211,6 +212,7 @@ Reports standalone verdict:
     - PASS → applicable rules checked and no clear violations found
     - WARN → missing/ambiguous rules or no changed files
     - FAIL → explicit hard-rule violation tied to diff evidence
+    - final `aif-gate-result` JSON block → parseable lowercase pass/warn/fail summary
     ↓
 Suggests `/aif-rules` when rules need to be added or clarified
 
