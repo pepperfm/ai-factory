@@ -183,6 +183,10 @@ This gives crash recovery — if the session dies mid-run, the plan file shows e
 
 This lets the execution loop keep noisy review, security, docs-drift, commit-analysis, and maintainability analysis work out of the main coordinator context when Claude is running in full custom-agent mode.
 
+In Handoff automation, `HANDOFF_SKIP_REVIEW=1` is a broad review-family bypass: it intentionally skips `review-sidecar`, `security-sidecar`, and `rules-sidecar`. It does not skip `best-practices-sidecar`, `docs-auditor`, or `commit-preparer` when those are otherwise applicable.
+
+`rules-sidecar` uses a structured contract so the coordinator can consume its result predictably: `Verdict: PASS|WARN|FAIL`, `Blocking findings:`, `Non-blocking notes:`, and `Evidence:`.
+
 The loop prep workers are also good background candidates and are configured that way:
 - `loop-test-prep`
 - `loop-perf-prep`
@@ -329,6 +333,8 @@ claude --agent implement-coordinator
 # Implement a specific plan file
 claude --agent implement-coordinator "@.ai-factory/plans/feature-auth.md"
 ```
+
+Manual verification for coordinator changes should be done in an environment where the Claude CLI is installed: run `claude --agent implement-coordinator` on a small single-task plan and confirm the single-task quality-gate flow launches the expected sidecars, including `rules-sidecar` unless `HANDOFF_SKIP_REVIEW=1` is set.
 
 **Simple single-task implementation (no coordinator needed):**
 

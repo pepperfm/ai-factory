@@ -391,6 +391,12 @@ Existing project agents in `.claude/agents/`:
 | `security-sidecar` | background read-only security worker | `inherit` | `Read, Glob, Grep` |
 | `rules-sidecar` | background read-only project rules worker | `inherit` | `Read, Glob, Grep` |
 
+For `implement-coordinator`, `HANDOFF_SKIP_REVIEW=1` is intentionally a broad review-family bypass. It skips `review-sidecar`, `security-sidecar`, and `rules-sidecar`; it does not skip `best-practices-sidecar`, `docs-auditor`, or `commit-preparer` when those are otherwise applicable.
+
+`rules-sidecar` should return a structured result with `Verdict: PASS|WARN|FAIL`, `Blocking findings:`, `Non-blocking notes:`, and `Evidence:`.
+
+Manual coordinator validation requires an environment with the Claude CLI installed. Run `claude --agent implement-coordinator` on a small single-task plan and confirm `rules-sidecar` participates in the single-task quality-gate flow unless `HANDOFF_SKIP_REVIEW=1` is set.
+
 Patterns already worth preserving here:
 - role-specific agents
 - strict output contracts

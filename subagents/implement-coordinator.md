@@ -37,6 +37,8 @@ Bash: printenv HANDOFF_SKIP_REVIEW || true
 
 **If `HANDOFF_MODE` is `1`:** pass `HANDOFF_MODE` and `HANDOFF_SKIP_REVIEW` values as explicit text in every `implement-worker` prompt (workers never call MCP directly).
 
+`HANDOFF_SKIP_REVIEW=1` is intentionally treated as a broad review-family bypass for Handoff automation. It skips `review-sidecar`, `security-sidecar`, and `rules-sidecar`; `best-practices-sidecar`, `docs-auditor`, and `commit-preparer` still run when otherwise applicable.
+
 **When `HANDOFF_MODE` is `1`** (autonomous Handoff agent):
 
 The Handoff coordinator already manages status transitions and DB writes directly. Do NOT call MCP tools. Skip all interactive prompts and use defaults.
@@ -161,7 +163,7 @@ Workflow for single-task execution:
 4. Launch read-only quality sidecars in background on the changed scope:
     - `review-sidecar` — correctness, regression, performance risks — **skip if `HANDOFF_SKIP_REVIEW=1`**
     - `security-sidecar` — security audit — **skip if `HANDOFF_SKIP_REVIEW=1`**
-    - `rules-sidecar` — project rules compliance check — **skip if `HANDOFF_SKIP_REVIEW=1`**
+    - `rules-sidecar` — project rules compliance check — **skip if `HANDOFF_SKIP_REVIEW=1`; this is intentional because Handoff uses that flag as a broad review-family bypass**
     - `best-practices-sidecar` — maintainability problems
 5. Near completion, also launch `docs-auditor` and `commit-preparer` to assess follow-ups.
 6. Feed only material findings back into the next refinement round:
