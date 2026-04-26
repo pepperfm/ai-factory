@@ -203,7 +203,8 @@ Context-gate defaults for `/aif-commit`, `/aif-review`, `/aif-verify`:
 - Check architecture, roadmap, and rules alignment as read-only context.
 - Missing optional files (`ROADMAP.md`, `RULES.md`) are `WARN`, not immediate failures.
 - In strict verification, clear architecture/rules violations and clear roadmap mismatch are blocking failures.
-- `/aif-rules-check` is the standalone rules-only companion and uses `PASS` / `WARN` / `FAIL` without changing the `WARN` / `ERROR` contract above.
+- `/aif-rules-check` is the standalone rules-only companion and uses human `PASS` / `WARN` / `FAIL` labels.
+- `/aif-verify`, `/aif-review`, `/aif-security-checklist`, and `/aif-rules-check` append a final machine-readable `aif-gate-result` JSON block with lowercase `pass` / `warn` / `fail` status values. See [Quality Gates](quality-gates.md).
 
 ## Workflow Skills
 
@@ -297,15 +298,15 @@ When executing through the Claude top-level `implement-coordinator`, the quality
 
 Optional step after `/aif-implement`. Goes through every task in the plan and verifies the code actually implements it. Checks build, tests, lint, looks for leftover TODOs, undocumented env vars, and plan-vs-code drift. If gaps are found, it first suggests `/aif-fix <issue summary>` (recommended). If verification is clean, it suggests `/aif-security-checklist` and `/aif-review`. Use `--strict` before merging to the configured base branch.
 
-Also runs read-only context gates against the resolved architecture, roadmap, and RULES.md artifacts. In normal mode, roadmap/milestone linkage gaps are warnings; in strict mode, clear roadmap mismatch is a failure, while missing `feat`/`fix`/`perf` milestone linkage remains a warning.
+Also runs read-only context gates against the resolved architecture, roadmap, and RULES.md artifacts. In normal mode, roadmap/milestone linkage gaps are warnings; in strict mode, clear roadmap mismatch is a failure, while missing `feat`/`fix`/`perf` milestone linkage remains a warning. The final output appends an `aif-gate-result` JSON block for orchestrators.
 
 ### `/aif-rules-check` — standalone rules gate
 
-Checks only rules compliance for staged changes, working-tree changes, or a provided git ref. It reads the resolved rules hierarchy, uses optional active plan context only to disambiguate scope, and stays read-only. Standalone verdicts are `PASS` / `WARN` / `FAIL`: missing or ambiguous rules stay `WARN`, while `FAIL` is reserved for explicit hard-rule violations tied to concrete diff evidence.
+Checks only rules compliance for staged changes, working-tree changes, or a provided git ref. It reads the resolved rules hierarchy, uses optional active plan context only to disambiguate scope, and stays read-only. Human verdicts are `PASS` / `WARN` / `FAIL`: missing or ambiguous rules stay `WARN`, while `FAIL` is reserved for explicit hard-rule violations tied to concrete diff evidence. The final output appends an `aif-gate-result` JSON block with lowercase `pass` / `warn` / `fail`.
 
 ### `/aif-review` — code review with read-only context gates
 
-Reviews staged changes or PR diff and reports correctness/security/performance findings. Includes read-only architecture/roadmap/rules gate notes in review output (`WARN` for non-blocking inconsistencies, `ERROR` only for explicitly blocking criteria).
+Reviews staged changes or PR diff and reports correctness/security/performance findings. Includes read-only architecture/roadmap/rules gate notes in review output (`WARN` for non-blocking inconsistencies, `ERROR` only for explicitly blocking criteria), then appends an `aif-gate-result` JSON block.
 
 ### `/aif-commit` — conventional commit with read-only context gates
 

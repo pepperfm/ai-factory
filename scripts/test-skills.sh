@@ -863,6 +863,20 @@ else
     echo "$RULES_CHECK_SMOKE_OUTPUT" | sed 's/^/      /'
 fi
 
+echo -e "\n${BOLD}=== Gate result contract smoke tests ===${NC}\n"
+
+set +e
+GATE_RESULT_SMOKE_OUTPUT=$(bash "$ROOT_DIR/scripts/test-gate-result-contract.sh" 2>&1)
+GATE_RESULT_SMOKE_EXIT=$?
+set -e
+
+if [[ $GATE_RESULT_SMOKE_EXIT -eq 0 ]]; then
+    pass "gate result contract smoke tests"
+else
+    fail "gate result contract smoke tests"
+    echo "$GATE_RESULT_SMOKE_OUTPUT" | sed 's/^/      /'
+fi
+
 echo -e "\n${BOLD}=== Results ===${NC}"
 echo -e "  Total:    $TOTAL"
 echo -e "  Passed:   ${GREEN}$PASSED${NC}"
