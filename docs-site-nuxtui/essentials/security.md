@@ -11,8 +11,12 @@ AI Factory protects against this with a mandatory **two-level security scan** be
 
 ## Two-level security scan
 
+<!-- AIF:CUSTOM:START security-split-layout -->
+
 ::security-split-layout
 ::
+
+<!-- AIF:CUSTOM:END security-split-layout -->
 
 ## Why two levels?
 

@@ -145,8 +145,12 @@ Configuration is saved to the agent's MCP settings file. GitHub Copilot uses `.v
 
 After initialization (example for Claude Code):
 
+<!-- AIF:CUSTOM:START project-structure-tree -->
+
 ::project-structure-tree
 ::
+
+<!-- AIF:CUSTOM:END project-structure-tree -->
 
 ## Reflex Loop files
 

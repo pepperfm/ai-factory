@@ -11,8 +11,12 @@ AI Factory has two phases: **configuration** (one-time project setup) and the **
 
 Run once per project. Sets up context files that all workflow skills depend on.
 
+<!-- AIF:CUSTOM:START project-config-flow -->
+
 ::project-config-flow
 ::
+
+<!-- AIF:CUSTOM:END project-config-flow -->
 
 Typical setup sequence:
 
@@ -30,10 +34,18 @@ ai-factory init
 
 The loop is predictable and resumable. Use discovery when the problem is still fuzzy, use grounded mode when certainty matters, then move through planning and execution.
 
+<!-- AIF:CUSTOM:START workflow-image -->
+
 ![workflow](/workflow.webp)
+
+<!-- AIF:CUSTOM:END workflow-image -->
+
+<!-- AIF:CUSTOM:START workflow-flowchart -->
 
 ::workflow-flowchart
 ::
+
+<!-- AIF:CUSTOM:END workflow-flowchart -->
 
 ### Typical flow
 

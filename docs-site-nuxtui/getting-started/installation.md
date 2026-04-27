@@ -7,6 +7,8 @@ navigation:
 
 ## Install
 
+<!-- AIF:CUSTOM:START install-code-group -->
+
 <code-group>
 
 ```bash [bun]
@@ -31,9 +33,15 @@ mise use -g npm:ai-factory
 
 </code-group>
 
+<!-- AIF:CUSTOM:END install-code-group -->
+
 ## Quick start
 
+<!-- AIF:CUSTOM:START quick-start-hint -->
+
 <div class="code-group__hint">In your project directory</div>
+
+<!-- AIF:CUSTOM:END quick-start-hint -->
 
 ```bash [Terminal]
 ai-factory init
@@ -56,6 +64,8 @@ This will:
 
 ### 1. Install AI Factory
 
+<!-- AIF:CUSTOM:START first-project-install-code-group -->
+
 <code-group>
 
 ```bash [bun]
@@ -79,6 +89,8 @@ mise use -g npm:ai-factory
 ```
 
 </code-group>
+
+<!-- AIF:CUSTOM:END first-project-install-code-group -->
 
 ### 2. Go to your project
 
@@ -109,6 +121,8 @@ From there you can explore, plan, and implement:
 
 ## Run without installation
 
+<!-- AIF:CUSTOM:START run-without-installation-code-group -->
+
 <div class="code-group__hint">One-off execution</div>
 
 <code-group>
@@ -134,6 +148,8 @@ mise x npm:ai-factory -- ai-factory init
 ```
 
 </code-group>
+
+<!-- AIF:CUSTOM:END run-without-installation-code-group -->
 
 ## Upgrade from v1 to v2
 

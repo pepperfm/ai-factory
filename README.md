@@ -33,7 +33,7 @@ ai-factory init
 - **Spec-driven development** — AI follows plans, not random exploration. Predictable, resumable, reviewable
 - **Community skills** — leverage [skills.sh](https://skills.sh) ecosystem or generate custom skills
 - **Stack-agnostic** — works with any language, framework, or platform
-- **Multi-agent support** — Claude Code, Cursor, Windsurf, Roo Code, Kilo Code, Antigravity, OpenCode, Warp, Zencoder, Codex CLI, GitHub Copilot, Gemini CLI, Junie, Qwen Code, or [any agent](docs-site/getting-started/index.md#supported-agents)
+- **Multi-agent support** — Claude Code, Cursor, Windsurf, Roo Code, Kilo Code, Antigravity, OpenCode, Warp, Zencoder, Codex CLI, GitHub Copilot, Gemini CLI, Junie, Qwen Code, or [any agent](docs/getting-started/index.md#supported-agents)
 
 ---
 
@@ -142,7 +142,7 @@ ai-factory upgrade
 /aif-docs
 ```
 
-See the full [Development Workflow](docs-site/essentials/development-workflow.md) with diagram and decision table.
+See the full [Development Workflow](docs/essentials/development-workflow.md) with diagram and decision table.
 
 ### Auto-Generated Documentation
 
@@ -164,17 +164,17 @@ AI Factory can generate and maintain your project docs with a single command:
 
 | Guide | Description |
 |-------|-------------|
-| [Getting Started](docs-site/getting-started/index.md) | What is AI Factory, supported agents, CLI commands |
-| [Development Workflow](docs-site/essentials/development-workflow.md) | Workflow diagram, when to use `explore` vs `grounded`, spec-driven approach |
-| [Reflex Loop](docs-site/ai/reflex-loop.md) | Iterative generate → evaluate → critique → refine workflow |
-| [Subagents](docs-site/ai/subagents.md) | Claude Code only: repo-local planning, implementation, and loop subagents with narrow role contracts |
-| [Core Skills](docs-site/ai/core-skills.md) | All slash commands — explore, grounded, plan, fix, implement, evolve, docs, and more |
-| [Skill Evolution](docs-site/ai/skill-evolution.md) | How /aif-fix patches feed into /aif-evolve to generate smarter skill rules |
-| [Plan Files](docs-site/essentials/plan-files.md) | Plan files, self-improvement patches, skill acquisition |
-| [Security](docs-site/essentials/security.md) | Two-level security scanning for external skills |
-| [Extensions](docs-site/essentials/extensions.md) | Writing and installing extensions — commands, injections, MCP, agents |
-| [Configuration](docs-site/essentials/configuration.md) | `.ai-factory.json`, MCP servers, project structure, best practices |
-| [Config Reference](docs-site/essentials/config-reference.md) | Full `config.yaml` key reference and skill read/write matrix |
+| [Getting Started](docs/getting-started/index.md) | What is AI Factory, supported agents, CLI commands |
+| [Development Workflow](docs/essentials/development-workflow.md) | Workflow diagram, when to use `explore` vs `grounded`, spec-driven approach |
+| [Reflex Loop](docs/ai/reflex-loop.md) | Iterative generate → evaluate → critique → refine workflow |
+| [Subagents](docs/ai/subagents.md) | Claude Code only: repo-local planning, implementation, and loop subagents with narrow role contracts |
+| [Core Skills](docs/ai/core-skills.md) | All slash commands — explore, grounded, plan, fix, implement, evolve, docs, and more |
+| [Skill Evolution](docs/ai/skill-evolution.md) | How /aif-fix patches feed into /aif-evolve to generate smarter skill rules |
+| [Plan Files](docs/essentials/plan-files.md) | Plan files, self-improvement patches, skill acquisition |
+| [Security](docs/essentials/security.md) | Two-level security scanning for external skills |
+| [Extensions](docs/essentials/extensions.md) | Writing and installing extensions — commands, injections, MCP, agents |
+| [Configuration](docs/essentials/configuration.md) | `.ai-factory.json`, MCP servers, project structure, best practices |
+| [Config Reference](docs/essentials/config-reference.md) | Full `config.yaml` key reference and skill read/write matrix |
 
 ---
 
