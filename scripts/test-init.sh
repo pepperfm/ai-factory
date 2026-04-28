@@ -495,6 +495,64 @@ if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$
 fi
 assert_contains "$TMPDIR/init-ext-codex-conflict.log" "must use a canonical \"target\" path" "non-canonical bundled Codex target aliases must be rejected during validation"
 
+CODEX_NESTED_ALIAS_EXTENSION_DIR="$TMPDIR/runtime-agent-files-codex-nested-alias"
+mkdir -p "$CODEX_NESTED_ALIAS_EXTENSION_DIR/agent-files/codex"
+
+cat > "$CODEX_NESTED_ALIAS_EXTENSION_DIR/extension.json" << 'EOF'
+{
+  "name": "aif-ext-runtime-agent-files-codex-nested-alias",
+  "version": "1.0.0",
+  "agentFiles": [
+    {
+      "runtime": "codex",
+      "source": "agent-files/codex/review-sidecar.toml",
+      "target": "nested/../review-sidecar.toml"
+    }
+  ]
+}
+EOF
+
+cat > "$CODEX_NESTED_ALIAS_EXTENSION_DIR/agent-files/codex/review-sidecar.toml" << 'EOF'
+name = "conflicting-review-sidecar"
+description = "conflicting codex agent file"
+EOF
+
+if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$CODEX_NESTED_ALIAS_EXTENSION_DIR" > "$TMPDIR/init-ext-codex-nested-alias.log" 2>&1); then
+  echo "Assertion failed: extension add must reject nested bundled Codex target aliases"
+  cat "$TMPDIR/init-ext-codex-nested-alias.log"
+  exit 1
+fi
+assert_contains "$TMPDIR/init-ext-codex-nested-alias.log" "has an invalid \"target\" path" "nested bundled Codex target aliases must be rejected during validation"
+
+CODEX_ESCAPE_EXTENSION_DIR="$TMPDIR/runtime-agent-files-codex-escape"
+mkdir -p "$CODEX_ESCAPE_EXTENSION_DIR/agent-files/codex"
+
+cat > "$CODEX_ESCAPE_EXTENSION_DIR/extension.json" << 'EOF'
+{
+  "name": "aif-ext-runtime-agent-files-codex-escape",
+  "version": "1.0.0",
+  "agentFiles": [
+    {
+      "runtime": "codex",
+      "source": "agent-files/codex/review-sidecar.toml",
+      "target": "../review-sidecar.toml"
+    }
+  ]
+}
+EOF
+
+cat > "$CODEX_ESCAPE_EXTENSION_DIR/agent-files/codex/review-sidecar.toml" << 'EOF'
+name = "escaping-review-sidecar"
+description = "escaping codex agent file"
+EOF
+
+if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$CODEX_ESCAPE_EXTENSION_DIR" > "$TMPDIR/init-ext-codex-escape.log" 2>&1); then
+  echo "Assertion failed: extension add must reject Codex target path escapes"
+  cat "$TMPDIR/init-ext-codex-escape.log"
+  exit 1
+fi
+assert_contains "$TMPDIR/init-ext-codex-escape.log" "has an invalid \"target\" path" "Codex target path escapes must be rejected during validation"
+
 echo "codex extension agent file conflict smoke tests passed"
 
 # -------------------------------------------------------------------
