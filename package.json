@@ -16,10 +16,10 @@
     "test:update": "node scripts/run-bash-test.mjs scripts/test-update.sh",
     "lint:unused": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "lint:dead": "knip --reporter compact",
-    "lint": "bun run lint:unused && bun run lint:dead",
+    "lint": "npm run lint:unused && npm run lint:dead",
     "clean": "rm -rf dist",
-    "prepublishOnly": "bun run clean && bun run build",
-    "link": "bun run build && bun link"
+    "prepublishOnly": "npm run clean && npm run build",
+    "link": "npm run build && npm link"
   },
   "keywords": [
     "claude",
