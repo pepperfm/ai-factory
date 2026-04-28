@@ -330,7 +330,7 @@ Docs policy semantics:
 
 - Skip this entire step. Branch validation already happened in Step 0.
 - The plan file path uses `HANDOFF_BRANCH_NAME` (slashes replaced by `-`) as the stem.
-- Do NOT run `git checkout`, `git pull`, `git checkout -b`, or `git worktree add`.
+- Do **NOT** run `git checkout`, `git pull`, `git checkout -b`, or `git worktree add`.
 
 **If `git.enabled = false` or `git.create_branches = false`:**
 
