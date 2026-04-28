@@ -142,6 +142,43 @@ This checks:
 
 ---
 
+## Machine-Readable Gate Result
+
+For `/aif-security-checklist` audits (full audit or category audit), keep the human-readable security report first and append one final fenced `aif-gate-result` JSON block.
+
+Do not append this gate block for the `ignore <item>` writer flow unless that invocation also performs and reports an audit result.
+
+Status mapping:
+- `fail`: an unignored critical/high security issue or other explicitly production-blocking finding remains.
+- `warn`: only medium/low findings, ignored items needing review, incomplete audit evidence, or audit command limitations remain.
+- `pass`: the audit completed and no unignored findings remain.
+
+Machine-readable fields:
+- Use `"gate": "security"`.
+- Use `"status": "pass|warn|fail"`.
+- Use `"blocking": true|false`.
+- Include only production-blocking findings in `"blockers": [`.
+- Include implicated paths in `"affected_files": [`.
+- Set `"suggested_next": {` to `/aif-fix` for code/config security fixes or `null` when no workflow command fits.
+- Never include secrets, tokens, raw passwords, or private credentials in the JSON block.
+
+```aif-gate-result
+{
+  "schema_version": 1,
+  "gate": "security",
+  "status": "warn",
+  "blocking": false,
+  "blockers": [],
+  "affected_files": ["src/api/session.ts"],
+  "suggested_next": {
+    "command": "/aif-fix",
+    "reason": "Address non-blocking security hardening findings."
+  }
+}
+```
+
+---
+
 ## 🔴 Critical: Pre-Deployment Checklist
 
 ### Must Fix Before Production

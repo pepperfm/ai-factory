@@ -41,6 +41,8 @@ Gate outputs must use:
 - `WARN` for non-blocking mismatches or missing optional files
 - `ERROR` for blocking violations
 
+For machine-readable orchestration, supported quality gates append a final `aif-gate-result` JSON block using lowercase `pass` / `warn` / `fail` status values. The human `WARN` / `ERROR` labels above remain readable report labels, not the machine contract.
+
 ### Architecture Gate
 - **Pass:** Changes follow documented module/layer boundaries.
 - **Warn:** Architecture document appears stale or mapping is ambiguous.
@@ -55,6 +57,15 @@ Gate outputs must use:
 - **Pass:** Changes align with an active milestone or approved roadmap direction.
 - **Warn:** `.ai-factory/ROADMAP.md` missing, ambiguous milestone mapping, or no milestone linkage for `feat`/`fix`/`perf` work.
 - **Fail (strict verify only):** Clear mismatch with roadmap direction after all available roadmap context is considered.
+
+## Standalone Rules Gate
+
+`/aif-rules-check` is the standalone, read-only rules-only companion to these context gates.
+
+- It evaluates the resolved rules hierarchy plus changed files/diff and reports `PASS` / `WARN` / `FAIL`.
+- Missing or non-applicable rules remain `WARN`.
+- Explicit hard-rule violations may become `FAIL`.
+- This does not change the human `WARN` / `ERROR` reporting labels used by `/aif-commit`, `/aif-review`, and `/aif-verify`; `/aif-review` and `/aif-verify` still append the shared machine-readable gate result when they act as quality gates.
 
 ## Threshold Decisions (Resolved)
 
