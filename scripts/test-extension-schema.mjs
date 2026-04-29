@@ -9,6 +9,8 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(scriptDir, '..');
 const schemaPath = path.join(rootDir, 'schemas', 'extension.schema.json');
 const manifestPath = path.join(rootDir, 'examples', 'extensions', 'aif-ext-hello', 'extension.json');
+const docsPath = path.join(rootDir, 'docs', 'extensions.md');
+const publicSchemaId = 'https://raw.githubusercontent.com/lee-to/ai-factory/2.x/schemas/extension.schema.json';
 const packedSchemaPath = 'schemas/extension.schema.json';
 
 function readJson(filePath) {
@@ -28,11 +30,32 @@ function assertFileExists(filePath, label) {
 function compileSchema() {
   assertFileExists(schemaPath, 'Extension schema');
   const schema = readJson(schemaPath);
+  assert.equal(schema.$id, publicSchemaId, 'Extension schema $id must be a public, resolvable URI');
   const ajv = new Ajv2020({
     allErrors: true,
     strict: true,
   });
   return ajv.compile(schema);
+}
+
+function assertSchemaReferencesDocumented() {
+  assertFileExists(docsPath, 'Extensions documentation');
+  const docs = fs.readFileSync(docsPath, 'utf8');
+
+  assert.ok(
+    docs.includes(publicSchemaId),
+    `Extensions documentation must recommend the public schema URL: ${publicSchemaId}`,
+  );
+  assert.ok(
+    docs.includes('./node_modules/ai-factory/schemas/extension.schema.json'),
+    'Extensions documentation must document the package-local schema path for local installs',
+  );
+  assert.ok(
+    docs.includes('globally'),
+    'Extensions documentation must distinguish global CLI installs from local package installs',
+  );
+
+  console.log('pass: extension schema references documented for global and local installs');
 }
 
 function assertExampleManifestValid(validate) {
@@ -94,3 +117,4 @@ const validate = compileSchema();
 assertExampleManifestValid(validate);
 assertStringAgentFilesInvalid(validate);
 assertSchemaPacked();
+assertSchemaReferencesDocumented();

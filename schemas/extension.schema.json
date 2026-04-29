@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ai-factory.dev/schemas/extension.schema.json",
+  "$id": "https://raw.githubusercontent.com/lee-to/ai-factory/2.x/schemas/extension.schema.json",
   "title": "AI Factory Extension Manifest",
   "description": "Manifest file for an AI Factory extension.",
   "type": "object",
