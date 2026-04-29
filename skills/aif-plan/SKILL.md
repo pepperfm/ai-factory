@@ -18,7 +18,14 @@ Create an implementation plan for a feature or task. Two modes:
 
 ### Step 0 (pre): Detect Handoff Mode
 
-Determine Handoff mode, task ID, and branch contract. If the caller passed `HANDOFF_MODE`, `HANDOFF_TASK_ID`, `HANDOFF_BRANCH_PREPARED`, and `HANDOFF_BRANCH_NAME` as explicit text in the prompt, use those values. Otherwise, use the Bash tool to read the environment variables:
+Determine Handoff mode, task ID, and branch contract. Resolve each value independently so legacy callers that pass only `HANDOFF_MODE` and `HANDOFF_TASK_ID` still enter Handoff mode correctly:
+
+- `HANDOFF_MODE`: explicit prompt value if present; otherwise environment value; otherwise empty string.
+- `HANDOFF_TASK_ID`: explicit prompt value if present; otherwise environment value; otherwise empty string.
+- `HANDOFF_BRANCH_PREPARED`: explicit prompt value if present; otherwise environment value; otherwise `0`.
+- `HANDOFF_BRANCH_NAME`: explicit prompt value if present; otherwise environment value; otherwise empty string.
+
+Use the Bash tool only for values that were not passed explicitly in the prompt:
 
 ```
 Bash: printenv HANDOFF_MODE || true
@@ -44,7 +51,8 @@ Handoff owns branch creation at the agent-code level. The skill must NOT create 
 **If `HANDOFF_BRANCH_PREPARED` is `1`:**
 
 - Do **NOT** execute `git checkout`, `git pull`, or `git checkout -b`.
-- Do **NOT** create a worktree (ignore `--parallel` for branch creation purposes).
+- Treat `--parallel` as disabled for all downstream behavior.
+- Do **NOT** create a worktree.
 - Read `HANDOFF_BRANCH_NAME` from the prompt / env.
 - Validate strict equality:
   ```
@@ -331,6 +339,7 @@ Docs policy semantics:
 - Skip this entire step. Branch validation already happened in Step 0.
 - The plan file path uses `HANDOFF_BRANCH_NAME` (slashes replaced by `-`) as the stem.
 - Do **NOT** run `git checkout`, `git pull`, `git checkout -b`, or `git worktree add`.
+- Treat `--parallel` as disabled: do not create a worktree and do not auto-invoke `/aif-implement`.
 
 **If `git.enabled = false` or `git.create_branches = false`:**
 
@@ -542,7 +551,7 @@ Use the canonical template in `references/TASK-FORMAT.md` (Plan File Template).
 
 ### Step 6: Next Steps
 
-**Full mode + parallel (`--parallel`):** Automatically invoke `/aif-implement` — the whole point of parallel is autonomous end-to-end execution in an isolated worktree.
+**Full mode + parallel (`--parallel`):** Automatically invoke `/aif-implement` — the whole point of parallel is autonomous end-to-end execution in an isolated worktree. If `HANDOFF_BRANCH_PREPARED = 1`, treat `--parallel` as disabled and do not auto-invoke `/aif-implement`.
 
 ```
 /aif-implement

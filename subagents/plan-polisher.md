@@ -27,7 +27,7 @@ Repo-specific rules:
 
 ## Handoff Integration
 
-Determine Handoff mode, task ID, and branch contract. The caller (plan-coordinator) passes these as explicit text in the prompt:
+Determine Handoff mode, task ID, and branch contract. Resolve each value independently. The caller (plan-coordinator) may pass any of these as explicit text in the prompt:
 
 ```
 HANDOFF_MODE: <value>
@@ -36,7 +36,12 @@ HANDOFF_BRANCH_PREPARED: <value>
 HANDOFF_BRANCH_NAME: <value>
 ```
 
-If the caller did NOT pass them, fall back to reading environment using the Bash tool:
+For each value not passed explicitly, fall back to reading environment using the Bash tool. Defaults after explicit/env lookup:
+
+- `HANDOFF_MODE`: empty string.
+- `HANDOFF_TASK_ID`: empty string.
+- `HANDOFF_BRANCH_PREPARED`: `0`.
+- `HANDOFF_BRANCH_NAME`: empty string.
 
 ```
 Bash: printenv HANDOFF_MODE || true
@@ -52,6 +57,7 @@ Bash: printenv HANDOFF_BRANCH_NAME || true
 **Branch ownership under Handoff (CRITICAL):**
 
 - If `HANDOFF_BRANCH_PREPARED = 1`:
+  - Treat `--parallel` as disabled for all downstream behavior.
   - Do **NOT** execute `git checkout`, `git pull`, `git checkout -b`, or create worktrees. Handoff already prepared the branch.
   - Run `Bash: git rev-parse --abbrev-ref HEAD` and verify strict equality with `HANDOFF_BRANCH_NAME`. Do **not** accept partial matches or "branch contains `/`" heuristics — false positives on unrelated branches like `release/v1` would silently corrupt state.
   - On mismatch, STOP. Record a blocker in the plan summary: `Branch drift: expected <HANDOFF_BRANCH_NAME>, actual <current>.` Do not switch or create a branch — Handoff classifies that as `BranchIsolationError` / `blocked_external`.
