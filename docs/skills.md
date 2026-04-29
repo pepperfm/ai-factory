@@ -135,7 +135,7 @@ Executes the plan:
   - Mutually exclusive with `@plan-file`, `status`, and task id
   - Skips `TaskList` / checkbox updates, does **not** create `FIX_PLAN.md` or `paths.patches` entries (use `/aif-fix` for bugs, not this flag)
   - Loads the same project context as regular mode (config, `DESCRIPTION.md`, `ARCHITECTURE.md`, rules, skill-context)
-  - Tests are written only if the description explicitly asks for them
+  - Tests are written only if the description explicitly asks for them, or if existing project conventions / touched code paths clearly require them
   - Redirects to `/aif-plan fast <description>` when the description looks too broad for a one-shot task
   - Optional `--docs=yes|no|warn` (default: `warn`) — `yes` runs the docs checkpoint via `/aif-docs`, `no` silences the warn line, `warn` emits `WARN [docs]` only
   - Supports Handoff via `HANDOFF_TASK_ID` env var with a synthetic `- [ ] <description>` plan pushed through `handoff_push_plan`; when `HANDOFF_TASK_ID` is unset, MCP sync is skipped entirely
