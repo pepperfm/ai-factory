@@ -166,6 +166,7 @@ my-extension/
 
 ```json
 {
+  "$schema": "./node_modules/ai-factory/schemas/extension.schema.json",
   "name": "aif-ext-example",
   "version": "1.0.0",
   "description": "Example extension",
@@ -227,10 +228,15 @@ my-extension/
 
 Only `name` and `version` are required. All other fields are optional.
 
+AI Factory publishes the extension manifest schema at `schemas/extension.schema.json` in the npm package. Extension authors may add an optional `$schema` property for editor/tooling validation; use a relative path that works from your manifest location, or the schema URI when your tooling resolves it.
+
+The schema validates the public manifest shape: commands, runtime definitions, runtime-aware `agentFiles`, injections, skills, replacements, and MCP server templates. Install-time semantics still run in AI Factory itself, including runtime existence, safe relative paths, extension matching, duplicate ownership, and whether a runtime supports managed agent files.
+
 ### Manifest Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `$schema` | `string` | Optional schema reference for editor and tooling validation. |
 | `name` | `string` | **Required.** Unique extension name. Allowed characters: letters, digits, `_`, `-`, `.`, `@`, `/`. No `..` or absolute paths. |
 | `version` | `string` | **Required.** Version string (SemVer is recommended). |
 | `description` | `string` | Human-readable description. |
