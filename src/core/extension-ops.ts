@@ -9,7 +9,7 @@ import {
   resolveExtensionVersion,
   resolveExtension,
   getExtensionsDir,
-  loadExtensionManifest,
+  loadInstalledExtensionManifest,
   loadAllExtensions,
   type ResolvedExtension,
 } from './extensions.js';
@@ -531,7 +531,7 @@ async function rollbackFailedExtensionInstall(
     await ensureDir(path.dirname(context.extensionDir));
     await copyDirectory(context.backupDir, context.extensionDir);
 
-    const restoredManifest = context.oldManifest ?? await loadExtensionManifest(context.extensionDir);
+    const restoredManifest = context.oldManifest ?? await loadInstalledExtensionManifest(context.extensionDir);
     if (restoredManifest) {
       await installExtensionAssetsForAllAgents(projectDir, agents, context.extensionDir, restoredManifest);
     }
@@ -717,7 +717,7 @@ export async function commitResolvedExtension(
     : null;
   const oldRecord = existIdx >= 0 ? { ...extensions[existIdx] } : null;
   const oldManifest = existIdx >= 0
-    ? await loadExtensionManifest(extensionDir)
+    ? await loadInstalledExtensionManifest(extensionDir)
     : null;
 
   const removedRuntimeIds = oldManifest

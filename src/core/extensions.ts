@@ -411,6 +411,10 @@ export interface InstalledExtensionManifest {
   manifest: ExtensionManifest;
 }
 
+interface LoadExtensionManifestOptions {
+  allowLegacyAgentFileTargetAliases?: boolean;
+}
+
 function isSafeRelativeAssetPath(filePath: string): boolean {
   const windowsDriveAbsolute = /^[a-zA-Z]:[\\/]/.test(filePath);
   const windowsUncAbsolute = /^(\\\\|\/\/)/.test(filePath);
@@ -427,6 +431,16 @@ function isSafeRelativeAssetPath(filePath: string): boolean {
 function isCanonicalRelativeAssetPath(filePath: string): boolean {
   const normalized = path.posix.normalize(filePath.replaceAll('\\', '/'));
   return normalized === filePath;
+}
+
+function normalizeLegacyAgentFileTarget(filePath: string): string | null {
+  const normalized = path.posix.normalize(filePath.replaceAll('\\', '/'));
+
+  if (!isSafeRelativeAssetPath(normalized) || !isCanonicalRelativeAssetPath(normalized)) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function validateRuntimeAwareAgentDefinition(agent: ExtensionAgentDef, extensionName: string): void {
@@ -514,6 +528,44 @@ function validateExtensionManifest(manifest: ExtensionManifest): void {
   }
 }
 
+function normalizeLegacyExtensionManifestTargets(
+  manifest: ExtensionManifest,
+  extensionDir: string,
+): ExtensionManifest {
+  const agentFiles = manifest.agentFiles?.map((agentFile) => {
+    if (isCanonicalRelativeAssetPath(agentFile.target)) {
+      return agentFile;
+    }
+
+    const normalizedTarget = normalizeLegacyAgentFileTarget(agentFile.target);
+    if (!normalizedTarget) {
+      return agentFile;
+    }
+
+    logExtension('warn', 'Normalized legacy extension agentFiles.target alias', {
+      extension: manifest.name,
+      extensionDir,
+      runtime: agentFile.runtime,
+      target: agentFile.target,
+      normalizedTarget,
+    });
+
+    return {
+      ...agentFile,
+      target: normalizedTarget,
+    };
+  });
+
+  if (!agentFiles) {
+    return manifest;
+  }
+
+  return {
+    ...manifest,
+    agentFiles,
+  };
+}
+
 const EXTENSIONS_DIR = 'extensions';
 const SAFE_NAME_PATTERN = /^[a-zA-Z0-9_@][\w.@/-]*$/;
 const SAFE_SKILL_NAME_PATTERN = /^[a-zA-Z0-9][\w.-]*$/;
@@ -534,14 +586,24 @@ export function getExtensionsDir(projectDir: string): string {
   return path.join(projectDir, '.ai-factory', EXTENSIONS_DIR);
 }
 
-export async function loadExtensionManifest(extensionDir: string): Promise<ExtensionManifest | null> {
+export async function loadExtensionManifest(
+  extensionDir: string,
+  options: LoadExtensionManifestOptions = {},
+): Promise<ExtensionManifest | null> {
   const manifestPath = path.join(extensionDir, 'extension.json');
-  const manifest = await readJsonFile<ExtensionManifest>(manifestPath);
+  let manifest = await readJsonFile<ExtensionManifest>(manifestPath);
   if (!manifest || !manifest.name || !manifest.version) {
     return null;
   }
+  if (options.allowLegacyAgentFileTargetAliases) {
+    manifest = normalizeLegacyExtensionManifestTargets(manifest, extensionDir);
+  }
   validateExtensionManifest(manifest);
   return manifest;
+}
+
+export async function loadInstalledExtensionManifest(extensionDir: string): Promise<ExtensionManifest | null> {
+  return loadExtensionManifest(extensionDir, { allowLegacyAgentFileTargetAliases: true });
 }
 
 export async function loadAllExtensions(
@@ -558,7 +620,7 @@ export async function loadAllExtensions(
       continue;
     }
     const extDir = path.join(extensionsDir, name);
-    const manifest = await loadExtensionManifest(extDir);
+    const manifest = await loadInstalledExtensionManifest(extDir);
     if (manifest) {
       results.push({ dir: extDir, manifest });
     }

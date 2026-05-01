@@ -394,6 +394,57 @@ node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[
 echo "extension agent file init smoke tests passed"
 
 # -------------------------------------------------------------------
+# Legacy installed extension smoke: projects that already contain
+# pre-validation agentFiles.target aliases must remain operable.
+# -------------------------------------------------------------------
+
+LEGACY_ALIAS_EXTENSION_DIR="$TMPDIR/legacy-agent-target-alias-extension"
+LEGACY_ALIAS_OTHER_EXTENSION_DIR="$TMPDIR/legacy-agent-target-alias-other-extension"
+LEGACY_ALIAS_PROJECT_DIR="$TMPDIR/init-smoke-legacy-agent-target-alias"
+mkdir -p "$LEGACY_ALIAS_EXTENSION_DIR/agent-files/codex" "$LEGACY_ALIAS_OTHER_EXTENSION_DIR" "$LEGACY_ALIAS_PROJECT_DIR"
+
+cat > "$LEGACY_ALIAS_EXTENSION_DIR/extension.json" << 'EOF'
+{
+  "name": "aif-ext-legacy-agent-target-alias",
+  "version": "1.0.0",
+  "agentFiles": [
+    {
+      "runtime": "codex",
+      "source": "agent-files/codex/legacy-helper.toml",
+      "target": "legacy-helper.toml"
+    }
+  ]
+}
+EOF
+
+cat > "$LEGACY_ALIAS_EXTENSION_DIR/agent-files/codex/legacy-helper.toml" << 'EOF'
+name = "legacy-helper"
+description = "legacy alias helper"
+EOF
+
+cat > "$LEGACY_ALIAS_OTHER_EXTENSION_DIR/extension.json" << 'EOF'
+{
+  "name": "aif-ext-legacy-agent-target-alias-other",
+  "version": "1.0.0"
+}
+EOF
+
+(cd "$LEGACY_ALIAS_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents codex --skills aif > "$TMPDIR/init-legacy-alias-base.log" 2>&1)
+(cd "$LEGACY_ALIAS_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$LEGACY_ALIAS_EXTENSION_DIR" > "$TMPDIR/init-legacy-alias-add.log" 2>&1)
+node -e "const fs=require('fs');const p=process.argv[1];const m=JSON.parse(fs.readFileSync(p,'utf8'));m.agentFiles[0].target='./legacy-helper.toml';fs.writeFileSync(p,JSON.stringify(m,null,2));" "$LEGACY_ALIAS_PROJECT_DIR/.ai-factory/extensions/aif-ext-legacy-agent-target-alias/extension.json"
+
+(cd "$LEGACY_ALIAS_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$LEGACY_ALIAS_OTHER_EXTENSION_DIR" > "$TMPDIR/init-legacy-alias-other-add.log" 2>&1)
+assert_contains "$TMPDIR/init-legacy-alias-other-add.log" "Normalized legacy extension agentFiles.target alias" "extension add must warn and continue when an installed manifest has a legacy target alias"
+assert_exists "$LEGACY_ALIAS_PROJECT_DIR/.codex/agents/legacy-helper.toml" "legacy alias project must keep the installed Codex helper"
+
+node -e "const fs=require('fs');const p=process.argv[1];const m=JSON.parse(fs.readFileSync(p,'utf8'));m.agentFiles[0].target='./legacy-helper.toml';fs.writeFileSync(p,JSON.stringify(m,null,2));" "$LEGACY_ALIAS_PROJECT_DIR/.ai-factory/extensions/aif-ext-legacy-agent-target-alias/extension.json"
+(cd "$LEGACY_ALIAS_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension update aif-ext-legacy-agent-target-alias --force > "$TMPDIR/init-legacy-alias-update.log" 2>&1)
+assert_contains "$TMPDIR/init-legacy-alias-update.log" "Normalized legacy extension agentFiles.target alias" "extension update must warn and continue when the previous installed manifest has a legacy target alias"
+assert_contains "$LEGACY_ALIAS_PROJECT_DIR/.ai-factory/extensions/aif-ext-legacy-agent-target-alias/extension.json" "\"target\": \"legacy-helper.toml\"" "extension update must replace the legacy alias with the canonical source manifest"
+
+echo "legacy extension agent file alias smoke tests passed"
+
+# -------------------------------------------------------------------
 # Bounded helper extension smoke: init should install a bounded Codex
 # helper agent file and inject the canonical /aif-improve companion
 # contract into supported runtime skill copies.
