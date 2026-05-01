@@ -164,7 +164,7 @@ Use the resolved config from Step 0:
 - Do NOT search for or modify plan checkboxes on disk.
 - Do NOT trigger the roadmap milestone completion check, docs checkpoint-from-plan-setting, plan-file cleanup prompt, or worktree merge prompt (those belong to the plan-backed workflow).
 
-**Handoff inline support (manual mode only):**
+**Handoff inline support:**
 
 > Naming clarification: `--without-plan` means "without a **local** plan artifact on disk" (no `paths.plan` / `paths.plans/*` / `paths.fix_plan`). When a Handoff task is linked, the task is still represented as a synthetic plan **inside Handoff** via `handoff_push_plan` — that's a remote representation, not a local file. The local-no-plan contract is preserved; only the remote sync surface is unchanged.
 
