@@ -539,11 +539,11 @@ Each stage builds on the previous one and saves its artifact to `paths.qa/<branc
 | `test-plan`      | `test-plan.md`      | Scoped test plan with types and acceptance criteria |
 | `test-cases`     | `test-cases.md`     | Concrete TC-NNN scenarios with steps and test data  |
 
-For large branches the `change-summary` stage checks commit count (>20) and diff size (>1000 lines) before proceeding — both gates ask the user how to continue rather than silently truncating.
+For large branches the `change-summary` stage checks commit count (>20) and diff size (>1000 lines) before proceeding — both gates ask the user how to continue rather than silently truncating. When `git.enabled=false` or git refs cannot be resolved, `/aif-qa` asks for manual change context instead of failing on git commands.
 
 The `--all` flag runs all three stages in sequence without inter-stage prompts. If any stage fails, the pipeline stops and reports the failing stage.
 
-- Config policy: config-aware; reads `paths.description`, `paths.architecture`, `paths.qa`, `language.ui`, `git.base_branch`
+- Config policy: config-aware; reads `paths.description`, `paths.architecture`, `paths.qa`, `language.ui`, `language.artifacts`, `language.technical_terms`, `git.enabled`, `git.base_branch`
 
 ## See Also
 

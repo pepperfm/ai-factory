@@ -6,13 +6,47 @@
 
 ## Step 1: Gather Change Information
 
-Use the `resolved_branch` and `artifact_dir` resolved in SKILL.md Step 0.2.
+Use the `resolved_branch`, `artifact_dir`, `ui_language`, `artifact_language`, `technical_terms_policy`, `git_enabled`, and `base_branch` resolved in SKILL.md Step 0 and Step 0.2.
+
+### Manual Change Context
+
+If `git_enabled = false`, the current directory is not a git work tree, or required refs cannot be resolved, do not fail with a raw git error.
+
+Use AskUserQuestion in `ui_language`.
+Meaning: ask the user to provide change context for the QA summary.
+Options meaning:
+1. Paste a diff or PR description
+2. Provide a changed-file list
+3. Provide a short implementation summary
+4. Cancel
+
+Use the supplied context as the primary evidence source. If the user cancels, stop without writing an artifact.
+
+### Git Change Context
+
+Use this flow only when `git_enabled = true` and the repository is a git work tree.
 
 **Resolve the comparison base:**
 
 > Use the `git.base_branch` value from config (default: `main`).
 > If `resolved_branch` IS the base branch, set `effective_base = <resolved_branch>~1`.
 > Otherwise, set `effective_base = <base_branch>`.
+>
+> Validate refs before running log or diff commands:
+>
+> ```bash
+> git rev-parse --verify <resolved_branch>
+> git rev-parse --verify <effective_base>
+> ```
+>
+> If `<effective_base>` is not available locally, try refreshing remotes and then resolve the remote base:
+>
+> ```bash
+> git fetch --all --prune
+> git rev-parse --verify origin/<base_branch>
+> ```
+>
+> If `origin/<base_branch>` resolves, set `effective_base = origin/<base_branch>`. If neither local nor remote base resolves, switch to manual change context mode and ask the user in `ui_language` for the comparison source.
 >
 > Build the full commit range from `effective_base..<resolved_branch>`.
 > Start with `analysis_base = <effective_base>`.
@@ -26,14 +60,12 @@ git log <effective_base>..<resolved_branch> --oneline
 
 **Check commit count — if more than 20, ask before proceeding:**
 
-```text
-AskUserQuestion: Found <N> commits to analyze. Processing all of them may consume significant context. How to proceed?
-
-Options:
-1. Analyze all <N> commits
+Use AskUserQuestion in `ui_language`.
+Meaning: tell the user that `<N>` commits were found and ask whether to analyze all commits, only the last 20, or cancel.
+Options meaning:
+1. Analyze all `<N>` commits
 2. Analyze only the last 20
 3. Cancel
-```
 
 Based on choice:
 - "Analyze all" → keep `analysis_base = <effective_base>`
@@ -47,49 +79,50 @@ Based on choice:
 git log <analysis_base>..<resolved_branch> --oneline
 ```
 
-Use `analysis_base` for the final commit list and for both diff commands below. This keeps the reduced commit scope and diff scope aligned.
+Use `analysis_base` for the final commit list and for all diff commands below. This keeps the reduced commit scope and diff scope aligned.
 
-**Get changed files and diff:**
+**Get diff statistics, changed files, and diff:**
 
 ```bash
+git diff --stat <analysis_base>...<resolved_branch>
 git diff <analysis_base>...<resolved_branch> --name-status
 git diff <analysis_base>...<resolved_branch>
 ```
 
 **Check diff size — if the diff exceeds ~1000 lines, warn before proceeding:**
 
-```text
-AskUserQuestion: The diff is large (<N> lines). Reading it in full will consume significant context. How to proceed?
-
-Options:
-1. Continue — read the full diff
+Use AskUserQuestion in `ui_language`.
+Meaning: tell the user that the diff is large (`<N>` lines) and ask whether to read it fully, analyze important files individually, or cancel.
+Options meaning:
+1. Continue and read the full diff
 2. Read changed files individually instead (recommended for large diffs)
 3. Cancel
-```
 
 Based on choice:
 - "Continue" → use the full diff as-is
-- "Read files individually" → skip the raw diff; proceed to Step 2 where Explore agents will read the files
+- "Read files individually" → skip the raw full diff; proceed to Step 2 and read targeted per-file diffs/content
 - "Cancel" → **STOP**
+
+For large diffs, never load generated files, lock files, dependency snapshots, build artifacts, minified assets, or vendored code unless the change itself is about them. Start from `git diff --stat`, then `git diff <analysis_base>...<resolved_branch> --name-status`, then per-file diffs for important files. Treat deleted and renamed files explicitly: deleted files may indicate removed behavior; renamed files may require caller/import checks even when content is mostly unchanged.
 
 ## Step 2: Explore Key Changed Files
 
 **Use `Task` tool with `subagent_type: Explore` to understand the changed files in parallel.**
 This keeps the main context clean and speeds up analysis on large diffs.
 
-From the `--name-status` output, identify the most important changed files (focus on business logic, skip lock files, generated files, and formatting-only changes).
+From the `--name-status` output, identify the most important changed files (focus on business logic, skip lock files, generated files, dependency snapshots, build artifacts, minified assets, vendored code, and formatting-only changes).
 
-Launch 1–2 Explore agents simultaneously:
+Launch 1–2 Explore agents simultaneously. Use the default configured model unless the runtime explicitly supports model selection:
 
 ```text
 Agent 1 — Core changes:
-Task(subagent_type: Explore, model: sonnet, prompt:
+Task(subagent_type: Explore, prompt:
   "Read and summarize the key changed files: [list of most important files].
    Focus on: what logic changed, what inputs/outputs changed, what side effects are possible.
    Thoroughness: medium. Be concise.")
 
 Agent 2 — Integration points (if needed):
-Task(subagent_type: Explore, model: sonnet, prompt:
+Task(subagent_type: Explore, prompt:
   "Find all callers and consumers of [changed modules/functions].
    Identify what adjacent functionality might be affected.
    Thoroughness: quick.")
@@ -101,6 +134,7 @@ After agents return, synthesize findings to understand:
 - What business logic actually changed
 - What dependent code could be affected
 - What integration points are at risk
+- Which findings are confirmed by code/diff evidence and which are assumptions
 
 ## Step 3: Risk Analysis
 
@@ -126,11 +160,23 @@ For each changed component, assess:
 - What existing functionality might have broken?
 - Which adjacent features need re-verification?
 
+Every high-risk item must be backed by observed code/diff evidence or explicitly marked as an assumption.
+
 ## Step 4: Generate the Summary
 
-Use the template from `templates/CHANGE-SUMMARY.md`.
+Use the canonical English template `templates/CHANGE-SUMMARY.md` as the structure source. If `artifact_language` is not `en`, translate all human-readable headings, labels, checklist items, placeholders, enum labels, risk labels, and explanatory text into `artifact_language` before saving.
+
+Write the artifact in `artifact_language`. Apply `technical_terms_policy` from SKILL.md. Keep file paths, commands, code identifiers, branch names, config keys, API names, package names, and raw error messages unchanged.
+
+The summary must include an `Evidence` section (localized heading is allowed) that ties important findings to files, functions, commits, or diff observations.
 
 ## Step 5: Save Artifact
+
+Before saving:
+- Verify that the document is written in `artifact_language`.
+- If most headings or body text are in another language, rewrite it before saving.
+- For `artifact_language = ru`, human-readable prose, headings, risks, priorities, and recommendations must be in Russian.
+- Technical identifiers, code names, branch names, API names, CLI commands, file paths, config keys, and raw error messages may remain unchanged.
 
 **Ensure the directory exists before saving:**
 
@@ -146,10 +192,8 @@ Save the result to `<artifact_dir>/change-summary.md`.
 
 **Otherwise:**
 
-```text
-AskUserQuestion: Change summary saved. Proceed to writing the test plan?
-
-Options:
-1. Yes — run /aif-qa test-plan <resolved_branch>
-2. No — stop here
-```
+Use AskUserQuestion in `ui_language`.
+Meaning: tell the user that the change summary was saved and ask whether to proceed to the test plan.
+Options meaning:
+1. Proceed by running `/aif-qa test-plan <resolved_branch>`
+2. Stop here
