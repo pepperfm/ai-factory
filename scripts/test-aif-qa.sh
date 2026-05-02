@@ -314,6 +314,14 @@ else
     fail "docs must list /aif-qa as reading language.artifacts, language.technical_terms, git.enabled, and git.base_branch"
 fi
 
+if grep -F '| `paths.description` |' "$config_reference_doc" | grep -Fq '/aif-qa' \
+    && grep -F '| `paths.architecture` |' "$config_reference_doc" | grep -Fq '/aif-qa' \
+    && grep -F '| `git.base_branch` |' "$config_reference_doc" | grep -Fq '/aif-qa'; then
+    pass "config-reference key rows list /aif-qa for description, architecture, and git.base_branch"
+else
+    fail "config-reference key rows must list /aif-qa for paths.description, paths.architecture, and git.base_branch"
+fi
+
 # Contract: allowed-tools covers both Bash(git *) and Bash(mkdir *)
 # (an earlier PR review caught a mismatch between instructions and permissions)
 allowed_line=$(grep -E '^allowed-tools:' "$SKILL_DIR/SKILL.md" || true)

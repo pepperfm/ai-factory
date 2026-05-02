@@ -180,6 +180,8 @@ Optional conventions step: use `/aif-rules` to append or refine project-wide axi
 | `/aif-verify` | Post-implementation quality check | No | No (reads existing) |
 | `/aif-qa` | Manual QA for a feature/fix: change summary → test plan → test cases | No | `paths.qa/<branch-slug>/*.md` (default: `.ai-factory/qa/<branch-slug>/`) |
 
+`/aif-qa change-summary` normally derives context from git diffs. When `git.enabled=false` or the target/base refs cannot be resolved locally or through `origin/<base_branch>`, it asks for manual change context instead of failing on git commands.
+
 ## Artifact Ownership and Context Gates
 
 Ownership is command-scoped to avoid conflicting writers:

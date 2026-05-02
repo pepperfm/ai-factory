@@ -286,6 +286,7 @@ Offers to delete PLAN.md when done (keeps feature-*.md)
 Reads .ai-factory/DESCRIPTION.md + ARCHITECTURE.md + config.yaml for context
     ↓
 change-summary → collects git diff, checks commit/diff size limits, explores key files in parallel
+               → if git is disabled or refs cannot be resolved, asks for manual change context instead of failing
                → saves .ai-factory/qa/<branch-slug>/change-summary.md
     ↓
 test-plan      → reads change-summary → determines scope and test types → saves test-plan.md
