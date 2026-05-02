@@ -1,6 +1,6 @@
 import path from 'path';
 import { createRequire } from 'module';
-import { readJsonFile, writeJsonFile, fileExists, getSubagentsDir, listFilesRecursive } from '../utils/fs.js';
+import { readJsonFile, writeJsonFile, fileExists, getPackagePath, listFilesRecursive } from '../utils/fs.js';
 import { findAgentConfig, getAgentConfig } from './agents.js';
 import { loadAllExtensions, type InstalledExtensionManifest } from './extensions.js';
 
@@ -210,9 +210,17 @@ async function getBundledAgentFileTargets(agentId: string): Promise<Set<string>>
   // Package-bundled Claude agent files are static for the lifetime of a single
   // CLI process, so a module-level cache avoids repeated directory walks.
   if (!bundledClaudeAgentFilesCache) {
-    const files = await listFilesRecursive(getSubagentsDir());
+    const claudeConfig = getAgentConfig('claude');
+    const sourceDir = claudeConfig.agentsSourceDir
+      ? getPackagePath(claudeConfig.agentsSourceDir)
+      : null;
+    if (!sourceDir) {
+      bundledClaudeAgentFilesCache = new Set();
+      return bundledClaudeAgentFilesCache;
+    }
+    const files = await listFilesRecursive(sourceDir);
     bundledClaudeAgentFilesCache = new Set(
-      files.map(filePath => path.relative(getSubagentsDir(), filePath).replaceAll('\\', '/')),
+      files.map(filePath => path.relative(sourceDir, filePath).replaceAll('\\', '/')),
     );
   }
 

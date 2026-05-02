@@ -459,7 +459,7 @@ echo "claude-only upgrade smoke tests passed"
 LEGACY_CLAUDE_PROJECT_DIR="$TMPDIR/update-smoke-legacy-claude"
 mkdir -p "$LEGACY_CLAUDE_PROJECT_DIR/.claude/agents"
 
-cp "$ROOT_DIR/subagents/plan-polisher.md" "$LEGACY_CLAUDE_PROJECT_DIR/.claude/agents/plan-polisher.md"
+cp "$ROOT_DIR/subagents/claude/agents/plan-polisher.md" "$LEGACY_CLAUDE_PROJECT_DIR/.claude/agents/plan-polisher.md"
 
 cat > "$LEGACY_CLAUDE_PROJECT_DIR/.ai-factory.json" << 'EOF'
 {

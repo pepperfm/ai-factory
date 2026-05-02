@@ -12,6 +12,8 @@ If you have an existing AI Factory project that was initialized before bundled a
 
 If you already have custom agents in `.claude/agents/` or `.codex/agents/`, they will not be touched — AI Factory only manages files listed in `installedAgentFiles`, `managedAgentFiles`, `installedConfigFiles`, and `managedConfigFiles` in `.ai-factory.json`. For Codex, that managed set includes `.codex/config.toml`; if drift is detected in that file, `ai-factory update` may overwrite it to restore the package-managed defaults.
 
+If a future AI Factory package version drops a previously bundled source file, `ai-factory update` reports that managed agent file as skipped and preserves the local tracked file instead of deleting it implicitly. Removal of managed agent files is only performed through explicit agent deselection or extension removal flows.
+
 ## Why This Exists
 
 AI Factory supports many coding agents, but only a subset expose a native agent/subagent system with project-local agent files and predictable orchestration contracts. Today AI Factory ships two such bundles:
@@ -37,7 +39,7 @@ The intended benefit is:
 Current scope is intentionally small:
 - Claude ships the broader bundle, including planning, implementation, review, six execution sidecars, and the `loop-*` family
 - Codex currently ships the planning / implementation / review baseline only: one planning subagent, one planning coordinator, one implementation coordinator with its worker, and five execution sidecars
-- source files live in the package `subagents/` directory (`subagents/*.md` for Claude, `subagents/codex/agents/*.toml` for Codex, and `subagents/codex/config.toml` for the Codex project config)
+- source files live in runtime-specific package directories (`subagents/claude/agents/*.md` for Claude, `subagents/codex/agents/*.toml` for Codex, and `subagents/codex/config.toml` for the Codex project config)
 - managed copies are installed into the runtime-specific project directory (`.claude/agents/` or `.codex/agents/`)
 - all of them are project-local, not user-global
 - all of them stay specialized for AI Factory internal workflows

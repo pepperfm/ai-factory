@@ -6,7 +6,6 @@ import {
   copyFile,
   getPackagePath,
   getSkillsDir,
-  getSubagentsDir,
   ensureDir,
   listDirectories,
   listFilesRecursive,
@@ -21,7 +20,6 @@ import {
 import type { AgentFileSource, AgentInstallation, ManagedArtifactState } from './config.js';
 import { getAgentConfig } from './agents.js';
 import { getExtensionsDir, type ExtensionManifest, type ExtensionAgentFile } from './extensions.js';
-import { AGENT_IDS } from './agents.js';
 import { processSkillTemplates, buildTemplateVars, processTemplate } from './template.js';
 import { getTransformer, extractFrontmatterName, replaceFrontmatterName } from './transformer.js';
 
@@ -136,6 +134,9 @@ function assertSafeManagedRelativePath(relPath: string): void {
   if (normalized.startsWith('/')) {
     throw new Error(`Managed artifact path must be relative: ${relPath}`);
   }
+  if (/^[A-Za-z]:(?:\/|$)/.test(normalized)) {
+    throw new Error(`Managed artifact path must not use a drive-qualified path: ${relPath}`);
+  }
   if (normalized === '..' || normalized.startsWith('../')) {
     throw new Error(`Managed artifact path must not escape its base directory: ${relPath}`);
   }
@@ -244,20 +245,31 @@ function resolveSkillPaths(
   };
 }
 
-function ensureTargetWithinRoot(targetRoot: string, targetFile: string): void {
+function ensureTargetWithinRoot(
+  targetRoot: string,
+  targetFile: string,
+  options?: {
+    rootLabel?: string;
+    targetLabel?: string;
+    rootDescription?: string;
+  },
+): void {
   const resolvedRoot = path.resolve(targetRoot);
+  const rootLabel = options?.rootLabel ?? 'Agent files directory';
+  const targetLabel = options?.targetLabel ?? 'Agent file target';
+  const rootDescription = options?.rootDescription ?? 'agents directory';
 
   // Reject a symlinked root when it already exists so managed agent files
   // cannot be redirected outside the project by replacing `.claude/agents`
   // or another runtime-local agents directory with a symlink.
   if (existsSync(resolvedRoot) && lstatSync(resolvedRoot).isSymbolicLink()) {
-    throw new Error(`Agent files directory must not be a symbolic link: ${targetRoot}`);
+    throw new Error(`${rootLabel} must not be a symbolic link: ${targetRoot}`);
   }
 
   const resolvedTarget = path.resolve(targetFile);
 
   if (resolvedTarget !== resolvedRoot && !resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`)) {
-    throw new Error(`Agent file target escapes agents directory: ${targetFile}`);
+    throw new Error(`${targetLabel} escapes ${rootDescription}: ${targetFile}`);
   }
 }
 
@@ -303,12 +315,27 @@ export function resolveManagedConfigFilePaths(projectDir: string, agentId: strin
     throw new Error(`Agent "${agentId}" does not define managed config files.`);
   }
 
+  const targetRoot = path.join(projectDir, agentConfig.configDir);
+  const sourceFile = path.join(sourceRoot, relPath);
+  const targetFile = path.join(targetRoot, relPath);
+  ensureTargetWithinRoot(targetRoot, targetFile, {
+    rootLabel: 'Managed config directory',
+    targetLabel: 'Managed config target',
+    rootDescription: 'config directory',
+  });
+  ensureTargetWithinRoot(sourceRoot, sourceFile, {
+    rootLabel: 'Managed config source directory',
+    targetLabel: 'Managed config source',
+    rootDescription: 'source directory',
+  });
+
   return {
-    sourceFile: path.join(sourceRoot, relPath),
-    targetFile: path.join(projectDir, agentConfig.configDir, relPath),
+    sourceFile,
+    targetFile,
     relPath,
   };
 }
+
 function getBundledAgentFilesSourceDir(agentId: string): string | null {
   const agentConfig = getAgentConfig(agentId);
   if (agentConfig.source !== 'builtin') {
@@ -319,7 +346,7 @@ function getBundledAgentFilesSourceDir(agentId: string): string | null {
     return getPackagePath(agentConfig.agentsSourceDir);
   }
 
-  return agentId === AGENT_IDS.claude ? getSubagentsDir() : null;
+  return null;
 }
 
 export function resolveManagedSubagentPaths(
@@ -418,15 +445,6 @@ export async function getAvailableSubagents(agentId: string = 'claude'): Promise
   const files = await listFilesRecursive(packageSubagentsDir);
   const relPaths = files.map(filePath => path.relative(packageSubagentsDir, filePath).replaceAll('\\', '/'));
 
-  if (agentId === AGENT_IDS.claude) {
-    // Claude bundle lives in the top-level package subagents directory. Nested
-    // paths belong to runtime-specific bundles such as Codex and must never be
-    // materialized into `.claude/agents/`.
-    return relPaths.filter(relPath => !relPath.includes('/'));
-  }
-
-  // Runtime-specific bundles like Codex intentionally preserve nested paths so
-  // future agent groups can live under a dedicated package subdirectory.
   return relPaths;
 }
 

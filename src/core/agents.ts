@@ -2,6 +2,11 @@ import { loadAllExtensions } from './extensions.js';
 
 export type AgentFileExtension = '.md' | '.toml';
 
+export const AGENT_IDS = {
+  claude: 'claude',
+  codex: 'codex',
+} as const;
+
 export interface AgentConfig {
   id: string;
   displayName: string;
@@ -31,10 +36,6 @@ export interface RuntimeDefinitionInput {
   skillsCliAgent: string | null;
 }
 
-export const AGENT_IDS = {
-  claude: 'claude',
-  codex: 'codex',
-} as const;
 export interface RuntimeManifestInput {
   name: string;
   agents?: RuntimeDefinitionInput[];
@@ -48,7 +49,7 @@ const BUILTIN_AGENT_REGISTRY: Record<string, AgentConfig> = {
     skillsDir: '.claude/skills',
     agentsDir: '.claude/agents',
     agentFileExtension: '.md',
-    agentsSourceDir: 'subagents',
+    agentsSourceDir: 'subagents/claude/agents',
     settingsFile: '.mcp.json',
     supportsMcp: true,
     skillsCliAgent: 'claude-code',
@@ -208,6 +209,10 @@ function getRegistryEntries(): AgentConfig[] {
     ...Object.values(BUILTIN_AGENT_REGISTRY),
     ...extensionAgentRegistry.values(),
   ];
+}
+
+export function getBuiltinAgentConfigs(): AgentConfig[] {
+  return Object.values(BUILTIN_AGENT_REGISTRY);
 }
 
 function isValidRuntimeDefinition(definition: RuntimeDefinitionInput): boolean {

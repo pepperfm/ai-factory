@@ -51,7 +51,7 @@ assert_not_exists() {
 }
 
 INIT_OUTPUT="$TMPDIR/init-claude.log"
-EXPECTED_AGENT_FILES=$(find "$ROOT_DIR/subagents" -maxdepth 1 -type f | wc -l | tr -d ' ')
+EXPECTED_AGENT_FILES=$(find "$ROOT_DIR/subagents/claude/agents" -type f | wc -l | tr -d ' ')
 
 AIF_TEST_ROOT_DIR="$ROOT_DIR" AIF_TEST_PROJECT_DIR="$PROJECT_DIR" node --input-type=module > "$INIT_OUTPUT" 2>&1 <<'EOF'
 import inquirer from 'inquirer';
@@ -509,7 +509,7 @@ if (cd "$EXT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$
   cat "$TMPDIR/init-ext-conflict.log"
   exit 1
 fi
-assert_contains "$TMPDIR/init-ext-conflict.log" "already owned by AI Factory bundled Claude agent files" "bundled Claude target collision must be rejected with a clear message"
+assert_contains "$TMPDIR/init-ext-conflict.log" "already owned by AI Factory bundled Claude Code agent files" "bundled Claude target collision must be rejected with a clear message"
 
 echo "extension agent file conflict smoke tests passed"
 
@@ -648,6 +648,36 @@ assert_exists "$UNSAFE_PROJECT_DIR/SHOULD_NOT_DELETE.md" "init deselection must 
 assert_contains "$TMPDIR/init-unsafe-remove.log" 'Skipping unsafe managed agent file path "\.\./\.\./SHOULD_NOT_DELETE\.md"' "init must warn when config contains an unsafe managed agent file path"
 
 echo "unsafe managed agent file removal smoke tests passed"
+
+# Managed config path boundary smoke: package-managed config files must be
+# constrained both to the package source directory and to the runtime config dir.
+
+node --input-type=module > "$TMPDIR/init-managed-config-paths.log" 2>&1 <<'EOF'
+import { resolveManagedConfigFilePaths } from './dist/core/installer.js';
+
+const projectDir = process.cwd();
+
+for (const relPath of ['../config.toml', 'nested/../../config.toml', 'C:/config.toml']) {
+  try {
+    resolveManagedConfigFilePaths(projectDir, 'codex', relPath);
+    throw new Error(`Expected rejection for ${relPath}`);
+  } catch (error) {
+    if (!String(error?.message ?? '').includes('Managed artifact path')) {
+      throw error;
+    }
+  }
+}
+
+const resolved = resolveManagedConfigFilePaths(projectDir, 'codex', 'config.toml');
+if (!resolved.targetFile.endsWith('/.codex/config.toml')) {
+  throw new Error(`Unexpected target path: ${resolved.targetFile}`);
+}
+if (!resolved.sourceFile.endsWith('/subagents/codex/config.toml')) {
+  throw new Error(`Unexpected source path: ${resolved.sourceFile}`);
+}
+EOF
+
+echo "managed config path boundary smoke tests passed"
 
 # CLI validation smoke: extension add must reject excess arguments.
 # -------------------------------------------------------------------

@@ -14,10 +14,6 @@ export function getSkillsDir(): string {
   return path.join(getPackageRoot(), 'skills');
 }
 
-export function getSubagentsDir(): string {
-  return path.join(getPackageRoot(), 'subagents');
-}
-
 export function getPackagePath(...segments: string[]): string {
   return path.join(getPackageRoot(), ...segments);
 }
