@@ -245,15 +245,34 @@ fi
 
 assert_exact_line \
     "$change_summary_ref" \
-    'git diff <analysis_base>...<resolved_branch> --name-status' \
-    "CHANGE-SUMMARY.md keeps exact name-status diff line" \
-    "CHANGE-SUMMARY.md must contain the exact line 'git diff <analysis_base>...<resolved_branch> --name-status'"
+    'git log <effective_base>..<analysis_target> --oneline' \
+    "CHANGE-SUMMARY.md keeps exact full-range log line with analysis_target" \
+    "CHANGE-SUMMARY.md must contain the exact line 'git log <effective_base>..<analysis_target> --oneline'"
 
 assert_exact_line \
     "$change_summary_ref" \
-    'git diff <analysis_base>...<resolved_branch>' \
-    "CHANGE-SUMMARY.md keeps exact full diff line" \
-    "CHANGE-SUMMARY.md must contain the exact line 'git diff <analysis_base>...<resolved_branch>'"
+    'git log <analysis_base>..<analysis_target> --oneline' \
+    "CHANGE-SUMMARY.md keeps exact scoped log line with analysis_target" \
+    "CHANGE-SUMMARY.md must contain the exact line 'git log <analysis_base>..<analysis_target> --oneline'"
+
+assert_exact_line \
+    "$change_summary_ref" \
+    'git diff <analysis_base>...<analysis_target> --name-status' \
+    "CHANGE-SUMMARY.md keeps exact name-status diff line with analysis_target" \
+    "CHANGE-SUMMARY.md must contain the exact line 'git diff <analysis_base>...<analysis_target> --name-status'"
+
+assert_exact_line \
+    "$change_summary_ref" \
+    'git diff <analysis_base>...<analysis_target>' \
+    "CHANGE-SUMMARY.md keeps exact full diff line with analysis_target" \
+    "CHANGE-SUMMARY.md must contain the exact line 'git diff <analysis_base>...<analysis_target>'"
+
+if grep -Fq 'analysis_target = <resolved_branch>' "$change_summary_ref" \
+    && grep -Fq 'analysis_target = origin/<resolved_branch>' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md defines analysis_target for local and remote target refs"
+else
+    fail "CHANGE-SUMMARY.md must define analysis_target for local and remote target refs"
+fi
 
 if grep -q 'reduced commit scope and diff scope aligned' "$change_summary_ref"; then
     pass "CHANGE-SUMMARY.md explicitly links reduced commit scope to diff scope"

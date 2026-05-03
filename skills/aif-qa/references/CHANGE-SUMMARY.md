@@ -44,6 +44,8 @@ Use this flow only when `git_enabled = true` and the repository is a git work tr
 > git rev-parse --verify <effective_base>
 > ```
 >
+> If `<resolved_branch>` resolves locally, set `analysis_target = <resolved_branch>`.
+>
 > If `<resolved_branch>` is not available locally, try refreshing remotes and then resolve the remote target ref:
 >
 > ```bash
@@ -51,7 +53,7 @@ Use this flow only when `git_enabled = true` and the repository is a git work tr
 > git rev-parse --verify origin/<resolved_branch>
 > ```
 >
-> If `origin/<resolved_branch>` resolves, use that remote ref for git log/diff commands while keeping `resolved_branch` unchanged as the artifact label. If neither local nor remote target branch resolves, switch to manual change context mode and ask the user in `ui_language` for the comparison source.
+> If `origin/<resolved_branch>` resolves, set `analysis_target = origin/<resolved_branch>`. Keep `resolved_branch` unchanged as the artifact label, branch slug input, and user-facing command argument. If neither local nor remote target branch resolves, switch to manual change context mode and ask the user in `ui_language` for the comparison source.
 >
 > If `<effective_base>` is not available locally, try refreshing remotes and then resolve the remote base:
 >
@@ -62,14 +64,14 @@ Use this flow only when `git_enabled = true` and the repository is a git work tr
 >
 > If `origin/<base_branch>` resolves, set `effective_base = origin/<base_branch>`. If neither local nor remote base resolves, switch to manual change context mode and ask the user in `ui_language` for the comparison source.
 >
-> Build the full commit range from `effective_base..<resolved_branch>`.
+> Build the full commit range from `effective_base..<analysis_target>`.
 > Start with `analysis_base = <effective_base>`.
-> This special case stays anchored to `resolved_branch`, not to the current checkout.
+> This special case stays anchored to `analysis_target`, not to the current checkout.
 
 **Get the full commit list:**
 
 ```bash
-git log <effective_base>..<resolved_branch> --oneline
+git log <effective_base>..<analysis_target> --oneline
 ```
 
 **Check commit count — if more than 20, ask before proceeding:**
@@ -90,7 +92,7 @@ Based on choice:
 **Finalize the scoped commit list:**
 
 ```bash
-git log <analysis_base>..<resolved_branch> --oneline
+git log <analysis_base>..<analysis_target> --oneline
 ```
 
 Use `analysis_base` for the final commit list and for all diff commands below. This keeps the reduced commit scope and diff scope aligned.
@@ -98,9 +100,9 @@ Use `analysis_base` for the final commit list and for all diff commands below. T
 **Get diff statistics, changed files, and diff:**
 
 ```bash
-git diff --stat <analysis_base>...<resolved_branch>
-git diff <analysis_base>...<resolved_branch> --name-status
-git diff <analysis_base>...<resolved_branch>
+git diff --stat <analysis_base>...<analysis_target>
+git diff <analysis_base>...<analysis_target> --name-status
+git diff <analysis_base>...<analysis_target>
 ```
 
 **Check diff size — if the diff exceeds ~1000 lines, warn before proceeding:**
@@ -117,7 +119,7 @@ Based on choice:
 - "Read files individually" → skip the raw full diff; proceed to Step 2 and read targeted per-file diffs/content
 - "Cancel" → **STOP**
 
-For large diffs, never load generated files, lock files, dependency snapshots, build artifacts, minified assets, or vendored code unless the change itself is about them. Start from `git diff --stat`, then `git diff <analysis_base>...<resolved_branch> --name-status`, then per-file diffs for important files. Treat deleted and renamed files explicitly: deleted files may indicate removed behavior; renamed files may require caller/import checks even when content is mostly unchanged.
+For large diffs, never load generated files, lock files, dependency snapshots, build artifacts, minified assets, or vendored code unless the change itself is about them. Start from `git diff --stat`, then `git diff <analysis_base>...<analysis_target> --name-status`, then per-file diffs for important files. Treat deleted and renamed files explicitly: deleted files may indicate removed behavior; renamed files may require caller/import checks even when content is mostly unchanged.
 
 ## Step 2: Explore Key Changed Files
 
