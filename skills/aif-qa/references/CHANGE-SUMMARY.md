@@ -22,6 +22,11 @@ Options meaning:
 
 Use the supplied context as the primary evidence source. If the user cancels, stop without writing an artifact.
 
+If the user provides an explicit changed-file list, use it as `changed_files` for Step 2.
+If you only have a diff, derive `changed_files` from the touched paths in that diff.
+If you only have a PR description or short implementation summary, derive a best-effort `changed_files` list from any explicitly named files, modules, routes, commands, or components mentioned there.
+If no reliable file list can be derived, skip file exploration in Step 2 and continue with summary-level risk analysis based on the supplied evidence. In that case, mark file-level uncertainty explicitly in the generated artifact instead of falling back to git assumptions.
+
 ### Git Change Context
 
 Use this flow only when `git_enabled = true` and the repository is a git work tree.
@@ -38,6 +43,15 @@ Use this flow only when `git_enabled = true` and the repository is a git work tr
 > git rev-parse --verify <resolved_branch>
 > git rev-parse --verify <effective_base>
 > ```
+>
+> If `<resolved_branch>` is not available locally, try refreshing remotes and then resolve the remote target ref:
+>
+> ```bash
+> git fetch --all --prune
+> git rev-parse --verify origin/<resolved_branch>
+> ```
+>
+> If `origin/<resolved_branch>` resolves, use that remote ref for git log/diff commands while keeping `resolved_branch` unchanged as the artifact label. If neither local nor remote target branch resolves, switch to manual change context mode and ask the user in `ui_language` for the comparison source.
 >
 > If `<effective_base>` is not available locally, try refreshing remotes and then resolve the remote base:
 >
@@ -110,7 +124,9 @@ For large diffs, never load generated files, lock files, dependency snapshots, b
 **Use `Task` tool with `subagent_type: Explore` to understand the changed files in parallel.**
 This keeps the main context clean and speeds up analysis on large diffs.
 
-From the `--name-status` output, identify the most important changed files (focus on business logic, skip lock files, generated files, dependency snapshots, build artifacts, minified assets, vendored code, and formatting-only changes).
+If Step 1 produced `changed_files`, identify the most important files from that set (focus on business logic, skip lock files, generated files, dependency snapshots, build artifacts, minified assets, vendored code, and formatting-only changes).
+
+If `changed_files` is unavailable because manual mode only provided summary-level context, skip direct file exploration. Instead, summarize risks from the supplied evidence, note that file-level exploration could not be performed, and keep assumptions clearly labeled.
 
 Launch 1–2 Explore agents simultaneously. Use the default configured model unless the runtime explicitly supports model selection:
 

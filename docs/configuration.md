@@ -114,7 +114,7 @@ language:
   # Language for generated artifacts (plans, specs, documentation)
   artifacts: en
 
-  # How to handle technical terms: keep | translate
+  # How to handle technical terms: keep | translate | mixed
   technical_terms: keep
 
 # Path Configuration (all relative to project root)

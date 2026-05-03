@@ -264,10 +264,11 @@ fi
 if grep -Fq 'git rev-parse --verify <resolved_branch>' "$change_summary_ref" \
     && grep -Fq 'git rev-parse --verify <effective_base>' "$change_summary_ref" \
     && grep -Fq 'git fetch --all --prune' "$change_summary_ref" \
-    && grep -Fq 'origin/<base_branch>' "$change_summary_ref"; then
-    pass "CHANGE-SUMMARY.md validates branch/base refs and documents remote fallback"
+    && grep -Fq 'origin/<base_branch>' "$change_summary_ref" \
+    && grep -Fq 'origin/<resolved_branch>' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md validates branch/base refs and documents remote fallback for base and target branch"
 else
-    fail "CHANGE-SUMMARY.md must validate branch/base refs and try origin/<base_branch> fallback"
+    fail "CHANGE-SUMMARY.md must validate branch/base refs and try origin/<base_branch> plus origin/<resolved_branch> fallback"
 fi
 
 if grep -Fq 'git.enabled' "$SKILL_DIR/SKILL.md" \
@@ -275,6 +276,13 @@ if grep -Fq 'git.enabled' "$SKILL_DIR/SKILL.md" \
     pass "SKILL.md handles git.enabled=false/manual change context"
 else
     fail "SKILL.md must read git.enabled and describe manual change context fallback"
+fi
+
+if grep -Fq 'If you only have a PR description or short implementation summary, derive a best-effort `changed_files` list' "$change_summary_ref" \
+    && grep -Fq 'If no reliable file list can be derived, skip file exploration' "$change_summary_ref"; then
+    pass "CHANGE-SUMMARY.md handles manual mode without requiring --name-status output"
+else
+    fail "CHANGE-SUMMARY.md must handle manual mode when no --name-status output exists"
 fi
 
 if grep -Fq 'git diff --stat' "$change_summary_ref" \
@@ -320,6 +328,17 @@ if grep -F '| `paths.description` |' "$config_reference_doc" | grep -Fq '/aif-qa
     pass "config-reference key rows list /aif-qa for description, architecture, and git.base_branch"
 else
     fail "config-reference key rows must list /aif-qa for paths.description, paths.architecture, and git.base_branch"
+fi
+
+config_template="$ROOT_DIR/skills/aif/references/config-template.yaml"
+configuration_doc="$ROOT_DIR/docs/configuration.md"
+
+if grep -Fq 'mixed' "$SKILL_DIR/SKILL.md" \
+    && grep -Fq 'mixed' "$config_template" \
+    && grep -Fq 'mixed' "$configuration_doc"; then
+    pass "technical_terms mixed policy is documented consistently in skill, config template, and configuration docs"
+else
+    fail "technical_terms mixed policy must be documented consistently everywhere it is supported"
 fi
 
 # Contract: allowed-tools covers both Bash(git *) and Bash(mkdir *)
