@@ -50,6 +50,20 @@ assert_not_exists() {
   fi
 }
 
+assert_not_contains() {
+  local file="$1"
+  local pattern="$2"
+  local hint="$3"
+  if grep -qE "$pattern" "$file"; then
+    echo "Assertion failed: $hint"
+    echo "Pattern: $pattern"
+    echo "--- output ---"
+    cat "$file"
+    echo "--------------"
+    exit 1
+  fi
+}
+
 INIT_OUTPUT="$TMPDIR/init-claude.log"
 EXPECTED_SUBAGENTS=$(find "$ROOT_DIR/subagents" -type f | wc -l | tr -d ' ')
 
@@ -128,6 +142,110 @@ assert_exists "$FLAT_PROJECT_DIR/.agent/workflows/references/RULES-CHECK-CONTRAC
 assert_not_exists "$FLAT_PROJECT_DIR/.agent/skills/aif-rules-check" "workflow-classified skills must not remain under .agent/skills/"
 
 echo "flat workflow init smoke tests passed"
+
+# -------------------------------------------------------------------
+# Codex app skills smoke: Codex app uses the repository skills location
+# with Codex-style $aif invocations, while Universal remains unchanged.
+# -------------------------------------------------------------------
+
+CODEX_APP_PROJECT_DIR="$TMPDIR/init-smoke-codex-app"
+mkdir -p "$CODEX_APP_PROJECT_DIR"
+
+(cd "$CODEX_APP_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents codex-app --skills aif,aif-plan > "$TMPDIR/init-codex-app.log" 2>&1)
+
+assert_contains "$TMPDIR/init-codex-app.log" "Codex app:" "Codex app summary must be printed"
+assert_exists "$CODEX_APP_PROJECT_DIR/.agents/skills/aif/SKILL.md" "Codex app must install aif into repo skills"
+assert_exists "$CODEX_APP_PROJECT_DIR/.agents/skills/aif-plan/SKILL.md" "Codex app must install aif-plan into repo skills"
+assert_contains "$CODEX_APP_PROJECT_DIR/.agents/skills/aif/SKILL.md" '\$aif-skill-generator' "Codex app skills must use Codex $ invocation"
+assert_not_contains "$CODEX_APP_PROJECT_DIR/.agents/skills/aif/SKILL.md" '(^|[^$])`/aif-skill-generator`' "Codex app skills must not keep slash invocation examples"
+assert_contains "$CODEX_APP_PROJECT_DIR/.agents/skills/aif/SKILL.md" '~/.agents/skills/aif-skill-generator/scripts/security-scan\.py' "Codex app transformer must not rewrite skill directory paths"
+assert_contains "$CODEX_APP_PROJECT_DIR/.agents/skills/aif/SKILL.md" '\.\./aif-skill-generator/SKILL\.md' "Codex app transformer must not rewrite relative markdown links"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if(a.id!=='codex-app')process.exit(1);if(a.skillsDir!=='.agents/skills')process.exit(1);if(a.agentsDir)process.exit(1);" "$CODEX_APP_PROJECT_DIR/.ai-factory.json"
+
+CODEX_APP_MCP_PROJECT_DIR="$TMPDIR/init-smoke-codex-app-mcp"
+mkdir -p "$CODEX_APP_MCP_PROJECT_DIR"
+
+(cd "$CODEX_APP_MCP_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents codex-app --skills aif --mcp filesystem,playwright,github > "$TMPDIR/init-codex-app-mcp.log" 2>&1)
+
+assert_exists "$CODEX_APP_MCP_PROJECT_DIR/.codex/config.toml" "Codex app MCP init must write project config.toml"
+assert_contains "$CODEX_APP_MCP_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.filesystem\]$' "Codex app MCP init must write filesystem server table"
+assert_contains "$CODEX_APP_MCP_PROJECT_DIR/.codex/config.toml" 'args = \["-y", "@modelcontextprotocol/server-filesystem", "\."\]' "Codex app filesystem MCP args must be TOML array syntax"
+assert_contains "$CODEX_APP_MCP_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.playwright\]$' "Codex app MCP init must write playwright server table"
+assert_contains "$CODEX_APP_MCP_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.github\]$' "Codex app MCP init must write github server table"
+assert_contains "$CODEX_APP_MCP_PROJECT_DIR/.codex/config.toml" 'env_vars = \["GITHUB_TOKEN"\]' "Codex app MCP env references must become env_vars"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if(a.id!=='codex-app')process.exit(1);if(a.mcp.github!==true||a.mcp.filesystem!==true||a.mcp.playwright!==true)process.exit(1);" "$CODEX_APP_MCP_PROJECT_DIR/.ai-factory.json"
+
+UNIVERSAL_PROJECT_DIR="$TMPDIR/init-smoke-universal"
+mkdir -p "$UNIVERSAL_PROJECT_DIR"
+
+(cd "$UNIVERSAL_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents universal --skills aif > "$TMPDIR/init-universal.log" 2>&1)
+assert_exists "$UNIVERSAL_PROJECT_DIR/.agents/skills/aif/SKILL.md" "Universal must still install aif into repo skills"
+assert_contains "$UNIVERSAL_PROJECT_DIR/.agents/skills/aif/SKILL.md" '`/aif-skill-generator`' "Universal must keep slash invocation examples"
+
+CONFLICT_PROJECT_DIR="$TMPDIR/init-smoke-codex-app-universal-conflict"
+mkdir -p "$CONFLICT_PROJECT_DIR"
+if (cd "$CONFLICT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents universal,codex-app --skills aif > "$TMPDIR/init-codex-app-conflict.log" 2>&1); then
+  echo "Assertion failed: universal and codex-app must not be allowed to share .agents/skills"
+  cat "$TMPDIR/init-codex-app-conflict.log"
+  exit 1
+fi
+assert_contains "$TMPDIR/init-codex-app-conflict.log" "universal, codex-app" "conflict error must include both runtime ids"
+assert_contains "$TMPDIR/init-codex-app-conflict.log" "\.agents/skills" "conflict error must include the shared skillsDir"
+
+echo "codex app init smoke tests passed"
+
+# -------------------------------------------------------------------
+# Codex app extension MCP smoke: extension-provided MCP servers must
+# be added to and removed from Codex project-scoped TOML settings.
+# -------------------------------------------------------------------
+
+CODEX_APP_MCP_EXTENSION_DIR="$TMPDIR/codex-app-mcp-extension"
+CODEX_APP_MCP_EXTENSION_PROJECT_DIR="$TMPDIR/init-smoke-codex-app-mcp-extension"
+mkdir -p "$CODEX_APP_MCP_EXTENSION_DIR" "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex"
+
+cat > "$CODEX_APP_MCP_EXTENSION_DIR/extension.json" << 'EOF'
+{
+  "name": "aif-ext-codex-app-mcp",
+  "version": "1.0.0",
+  "mcpServers": [
+    {
+      "key": "codex-app-smoke",
+      "template": {
+        "command": "node",
+        "args": ["server.js"],
+        "env": {
+          "AIF_TOKEN": "${AIF_TOKEN}",
+          "AIF_LITERAL": "literal-value"
+        }
+      },
+      "instruction": "Set AIF_TOKEN"
+    }
+  ]
+}
+EOF
+
+cat > "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" << 'EOF'
+[sandbox_workspace_write]
+network_access = false
+EOF
+
+(cd "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents codex-app --skills aif > "$TMPDIR/init-codex-app-mcp-extension-base.log" 2>&1)
+(cd "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension add "$CODEX_APP_MCP_EXTENSION_DIR" > "$TMPDIR/init-codex-app-mcp-extension-add.log" 2>&1)
+
+assert_contains "$TMPDIR/init-codex-app-mcp-extension-add.log" "MCP servers configured: codex-app-smoke" "Codex app extension MCP add must report configured server"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[sandbox_workspace_write\]$' "Codex app extension MCP add must preserve unrelated TOML settings"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.codex-app-smoke\]$' "Codex app extension MCP add must write server table"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'command = "node"' "Codex app extension MCP add must write command"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'args = \["server\.js"\]' "Codex app extension MCP add must write args"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'env_vars = \["AIF_TOKEN"\]' "Codex app extension MCP add must convert env references"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.codex-app-smoke\.env\]$' "Codex app extension MCP add must write literal env table"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'AIF_LITERAL = "literal-value"' "Codex app extension MCP add must preserve literal env values"
+
+(cd "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension remove aif-ext-codex-app-mcp > "$TMPDIR/init-codex-app-mcp-extension-remove.log" 2>&1)
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[sandbox_workspace_write\]$' "Codex app extension MCP remove must preserve unrelated TOML settings"
+assert_not_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'codex-app-smoke' "Codex app extension MCP remove must remove server tables"
+
+echo "codex app extension MCP smoke tests passed"
 
 # -------------------------------------------------------------------
 # Extension agent files + dynamic runtime smoke: init should accept
