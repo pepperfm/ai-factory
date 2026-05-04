@@ -191,6 +191,11 @@ if (cd "$CONFLICT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agen
 fi
 assert_contains "$TMPDIR/init-codex-app-conflict.log" "universal, codex-app" "conflict error must include both runtime ids"
 assert_contains "$TMPDIR/init-codex-app-conflict.log" "\.agents/skills" "conflict error must include the shared skillsDir"
+if grep -Eq '^[[:space:]]+at ' "$TMPDIR/init-codex-app-conflict.log"; then
+  echo "Assertion failed: conflict error must not print a stack trace"
+  cat "$TMPDIR/init-codex-app-conflict.log"
+  exit 1
+fi
 
 echo "codex app init smoke tests passed"
 
