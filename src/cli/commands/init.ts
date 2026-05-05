@@ -330,10 +330,13 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
       console.log(chalk.yellow('\nSetup cancelled.'));
       return;
     }
+    if (message.startsWith('Incompatible agent skill targets:')) {
+      console.error(chalk.red(`\nError: ${message}`));
+      process.exit(1);
+    }
     if (nonInteractive && (
       message.startsWith('Unknown ')
       || message.startsWith('At least one ')
-      || message.startsWith('Incompatible agent skill targets:')
     )) {
       console.error(chalk.red(`\nError: ${message}`));
       process.exit(1);

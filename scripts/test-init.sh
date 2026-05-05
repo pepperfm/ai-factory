@@ -197,6 +197,62 @@ if grep -Eq '^[[:space:]]+at ' "$TMPDIR/init-codex-app-conflict.log"; then
   exit 1
 fi
 
+INTERACTIVE_CONFLICT_PROJECT_DIR="$TMPDIR/init-smoke-codex-app-universal-interactive-conflict"
+mkdir -p "$INTERACTIVE_CONFLICT_PROJECT_DIR"
+AIF_TEST_ROOT_DIR="$ROOT_DIR" AIF_TEST_PROJECT_DIR="$INTERACTIVE_CONFLICT_PROJECT_DIR" node --input-type=module > "$TMPDIR/init-codex-app-interactive-conflict.log" 2>&1 <<'EOF'
+import inquirer from 'inquirer';
+import path from 'path';
+import { pathToFileURL } from 'url';
+
+const promptQueue = [
+  { selectedAgents: ['universal', 'codex-app'], selectedSkills: ['aif'] },
+  { configureMcp: false },
+];
+
+const originalPrompt = inquirer.prompt.bind(inquirer);
+const originalExit = process.exit;
+let exitCode = null;
+
+inquirer.prompt = async (questions) => {
+  const next = promptQueue.shift();
+  if (!next) {
+    throw new Error(`Unexpected prompt: ${JSON.stringify(questions)}`);
+  }
+  return next;
+};
+process.exit = (code = 0) => {
+  exitCode = code;
+  throw new Error(`PROCESS_EXIT:${code}`);
+};
+
+process.chdir(process.env.AIF_TEST_PROJECT_DIR);
+
+const moduleUrl = pathToFileURL(path.join(process.env.AIF_TEST_ROOT_DIR, 'dist/cli/commands/init.js')).href;
+const { initCommand } = await import(moduleUrl);
+
+try {
+  await initCommand();
+  throw new Error('initCommand unexpectedly succeeded');
+} catch (error) {
+  if (!String(error.message).startsWith('PROCESS_EXIT:')) {
+    throw error;
+  }
+  if (exitCode !== 1) {
+    throw new Error(`Expected exit code 1, got ${exitCode}`);
+  }
+} finally {
+  inquirer.prompt = originalPrompt;
+  process.exit = originalExit;
+}
+EOF
+assert_contains "$TMPDIR/init-codex-app-interactive-conflict.log" "universal, codex-app" "interactive conflict error must include both runtime ids"
+assert_contains "$TMPDIR/init-codex-app-interactive-conflict.log" "\.agents/skills" "interactive conflict error must include the shared skillsDir"
+if grep -Eq '^[[:space:]]+at ' "$TMPDIR/init-codex-app-interactive-conflict.log"; then
+  echo "Assertion failed: interactive conflict error must not print a stack trace"
+  cat "$TMPDIR/init-codex-app-interactive-conflict.log"
+  exit 1
+fi
+
 echo "codex app init smoke tests passed"
 
 # -------------------------------------------------------------------
@@ -246,9 +302,19 @@ assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'env_v
 assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.codex-app-smoke\.env\]$' "Codex app extension MCP add must write literal env table"
 assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'AIF_LITERAL = "literal-value"' "Codex app extension MCP add must preserve literal env values"
 
+cat >> "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" << 'EOF'
+
+[mcp_servers.codex-app-smoke.tools.search]
+approval = "never"
+
+[mcp_servers.unrelated.tools.keep]
+approval = "always"
+EOF
+
 (cd "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" extension remove aif-ext-codex-app-mcp > "$TMPDIR/init-codex-app-mcp-extension-remove.log" 2>&1)
 assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[sandbox_workspace_write\]$' "Codex app extension MCP remove must preserve unrelated TOML settings"
 assert_not_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'codex-app-smoke' "Codex app extension MCP remove must remove server tables"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.unrelated\.tools\.keep\]$' "Codex app extension MCP remove must preserve unrelated nested TOML tables"
 
 echo "codex app extension MCP smoke tests passed"
 

@@ -88,7 +88,8 @@ function parseTomlTableName(line: string): string | null {
 
 function isManagedServerTable(tableName: string, keys: Set<string>): boolean {
   for (const key of keys) {
-    if (tableName === `mcp_servers.${key}` || tableName === `mcp_servers.${key}.env`) {
+    const serverTable = `mcp_servers.${key}`;
+    if (tableName === serverTable || tableName.startsWith(`${serverTable}.`)) {
       return true;
     }
   }
