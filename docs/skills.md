@@ -503,7 +503,7 @@ Security audit based on OWASP Top 10 and best practices:
 /aif-security-checklist race-condition   # Race conditions & TOCTOU
 ```
 
-Each category includes a checklist, vulnerable/safe code examples (TypeScript, PHP), and an automated audit script.
+Each category includes a checklist, vulnerable/safe code examples (TypeScript, PHP), and an automated audit script. API/client checks include production-only safeguards for browser logging and normalized client-safe UI errors instead of raw exception details.
 
 Audit outputs append a final `aif-gate-result` JSON block for full and category audits. The `ignore <item>` writer flow updates the configured security ignored-item artifact and only reports a gate result when it also performs an audit.
 
