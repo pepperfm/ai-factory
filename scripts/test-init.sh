@@ -276,7 +276,8 @@ cat > "$CODEX_APP_MCP_EXTENSION_DIR/extension.json" << 'EOF'
         "args": ["server.js"],
         "env": {
           "AIF_TOKEN": "${AIF_TOKEN}",
-          "AIF_LITERAL": "literal-value"
+          "AIF_LITERAL": "literal-value",
+          "AIF.SCOPE": "literal-scope"
         }
       },
       "instruction": "Set AIF_TOKEN"
@@ -301,6 +302,7 @@ assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'args 
 assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'env_vars = \["AIF_TOKEN"\]' "Codex app extension MCP add must convert env references"
 assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '^\[mcp_servers\.codex-app-smoke\.env\]$' "Codex app extension MCP add must write literal env table"
 assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" 'AIF_LITERAL = "literal-value"' "Codex app extension MCP add must preserve literal env values"
+assert_contains "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" '"AIF\.SCOPE" = "literal-scope"' "Codex app extension MCP add must quote unsafe literal env keys"
 
 cat >> "$CODEX_APP_MCP_EXTENSION_PROJECT_DIR/.codex/config.toml" << 'EOF'
 

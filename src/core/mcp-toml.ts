@@ -8,6 +8,7 @@ interface CodexTomlServerConfig {
 }
 
 const SERVER_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
+const TOML_BARE_KEY_PATTERN = /^[A-Za-z0-9_-]+$/;
 const ENV_REF_PATTERN = /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$/;
 const TOML_TABLE_PATTERN = /^\s*\[([^\]]+)\]\s*(?:#.*)?$/;
 
@@ -19,6 +20,10 @@ function assertValidServerKey(key: string): void {
 
 function formatTomlString(value: string): string {
   return JSON.stringify(value);
+}
+
+function formatTomlKey(value: string): string {
+  return TOML_BARE_KEY_PATTERN.test(value) ? value : formatTomlString(value);
 }
 
 function formatTomlArray(values: string[]): string {
@@ -75,7 +80,7 @@ function serializeCodexMcpServer(key: string, template: McpServerConfig): string
   if (server.env) {
     lines.push('', `[mcp_servers.${key}.env]`);
     for (const [envKey, envValue] of Object.entries(server.env)) {
-      lines.push(`${envKey} = ${formatTomlString(envValue)}`);
+      lines.push(`${formatTomlKey(envKey)} = ${formatTomlString(envValue)}`);
     }
   }
 
