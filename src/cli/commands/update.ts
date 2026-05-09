@@ -21,6 +21,7 @@ import {
   updateSubagents,
 } from '../../core/installer.js';
 import {applyExtensionInjections} from '../../core/injections.js';
+import {assertCompatibleSkillTargets} from '../../core/transformer.js';
 import {
   installExtensionSkillsForAllAgents,
   installExtensionAgentFilesForAllAgents,
@@ -62,6 +63,8 @@ function formatReason(reason: string): string {
       return 'source unavailable';
     case 'extension-refresh':
       return 'extension refresh';
+    case 'untracked-target-exists':
+      return 'untracked file exists';
     default:
       return reason;
   }
@@ -172,6 +175,8 @@ export async function updateCommand(options: UpdateCommandOptions = {}): Promise
   await hydrateProjectAgentRegistry(projectDir, {
     extensionNames: config.extensions?.map(extension => extension.name) ?? [],
   });
+
+  assertCompatibleSkillTargets(config.agents);
 
   const currentVersion = getCurrentVersion();
 

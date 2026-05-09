@@ -27,6 +27,7 @@ AI Factory works with any AI coding agent. During `ai-factory init`, you choose 
 | Warp | `.warp/` | `.warp/skills/` |
 | Zencoder | `.zencoder/` | `.zencoder/skills/` |
 | Codex CLI | `.codex/` | `.codex/skills/` |
+| Codex app | `.agents/` | `.agents/skills/` |
 | GitHub Copilot | `.github/` | `.github/skills/` |
 | Gemini CLI | `.gemini/` | `.gemini/skills/` |
 | Junie | `.junie/` | `.junie/skills/` |
@@ -35,7 +36,9 @@ AI Factory works with any AI coding agent. During `ai-factory init`, you choose 
 
 When Claude Code is selected, AI Factory installs bundled Claude agent files into `.claude/agents/` and tracks them in `.ai-factory.json` with the universal `agentsDir`, `installedAgentFiles`, and `managedAgentFiles` fields. When Codex CLI is selected, AI Factory also installs bundled Codex native agent TOML files into `.codex/agents/` plus a managed `.codex/config.toml`. That Codex bundle is currently the baseline planning / implementation / review layer, not full parity with the broader Claude bundle, and `.codex/config.toml` is intentionally AI-Factory-managed. Extensions can additionally provide agent files for Codex or extension-defined runtimes through the same generic agent-files mechanism, but the bundled Claude/Codex package inventory is documented separately in [Subagents](subagents.md).
 
-MCP server configuration is supported for Claude Code, Cursor, GitHub Copilot, Roo Code, Kilo Code, OpenCode, and Qwen Code. Other agents get skills installed with correct paths but without MCP auto-configuration.
+Codex CLI and Codex app receive Codex-style skill content and use `$aif-*` invocations. Slash-command runtimes keep `/aif-*` examples. Because Codex app and Universal both write to `.agents/skills/` with different invocation styles, select one of those runtimes per project.
+
+MCP server configuration is supported for Claude Code, Cursor, GitHub Copilot, Roo Code, Kilo Code, OpenCode, Qwen Code, and Codex app. Other agents get skills installed with correct paths but without MCP auto-configuration.
 
 ## Your First Project
 
@@ -52,6 +55,7 @@ ai-factory init
 
 # 4. Open your AI agent (Claude Code, Cursor, etc.) and run:
 /aif
+# Codex CLI and Codex app use: $aif
 
 # 5. Optional discovery before planning
 /aif-explore Add user authentication with OAuth

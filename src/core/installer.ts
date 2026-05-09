@@ -1244,6 +1244,14 @@ export async function updateConfigFiles(
       continue;
     }
 
+    if (!previousInstalledSet.has(relPath) && installedHash) {
+      console.warn(
+        `Warning: Existing untracked config file "${relPath}" detected — preserving it and skipping managed install.`,
+      );
+      shouldInstall.set(relPath, { install: false, reason: 'untracked-target-exists' });
+      continue;
+    }
+
     if (!previousInstalledSet.has(relPath)) {
       shouldInstall.set(relPath, { install: true, reason: 'new-in-package' });
       continue;

@@ -503,7 +503,7 @@ Security audit based on OWASP Top 10 and best practices:
 /aif-security-checklist race-condition   # Race conditions & TOCTOU
 ```
 
-Each category includes a checklist, vulnerable/safe code examples (TypeScript, PHP), and an automated audit script.
+Each category includes a checklist, vulnerable/safe code examples (TypeScript, PHP), and an automated audit script. API/client checks include production-only safeguards for browser logging and normalized client-safe UI errors instead of raw exception details.
 
 Audit outputs append a final `aif-gate-result` JSON block for full and category audits. The `ignore <item>` writer flow updates the configured security ignored-item artifact and only reports a gate result when it also performs an audit.
 
@@ -539,11 +539,11 @@ Each stage builds on the previous one and saves its artifact to `paths.qa/<branc
 | `test-plan`      | `test-plan.md`      | Scoped test plan with types and acceptance criteria |
 | `test-cases`     | `test-cases.md`     | Concrete TC-NNN scenarios with steps and test data  |
 
-For large branches the `change-summary` stage checks commit count (>20) and diff size (>1000 lines) before proceeding — both gates ask the user how to continue rather than silently truncating.
+For large branches the `change-summary` stage checks commit count (>20) and diff size (>1000 lines) before proceeding — both gates ask the user how to continue rather than silently truncating. When `git.enabled=false` or git refs cannot be resolved, `/aif-qa` asks for manual change context instead of failing on git commands.
 
 The `--all` flag runs all three stages in sequence without inter-stage prompts. If any stage fails, the pipeline stops and reports the failing stage.
 
-- Config policy: config-aware; reads `paths.description`, `paths.architecture`, `paths.qa`, `language.ui`, `git.base_branch`
+- Config policy: config-aware; reads `paths.description`, `paths.architecture`, `paths.qa`, `language.ui`, `language.artifacts`, `language.technical_terms`, `git.enabled`, `git.base_branch`
 
 ## See Also
 
