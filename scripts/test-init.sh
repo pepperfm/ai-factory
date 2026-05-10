@@ -167,6 +167,24 @@ EXPECTED_CODEX_AGENT_FILES="$EXPECTED_CODEX_AGENT_FILES" node -e "const fs=requi
 
 echo "codex init smoke tests passed"
 
+CODEX_USER_CONFIG_INIT_PROJECT_DIR="$TMPDIR/init-smoke-codex-user-config"
+mkdir -p "$CODEX_USER_CONFIG_INIT_PROJECT_DIR/.codex"
+
+cat > "$CODEX_USER_CONFIG_INIT_PROJECT_DIR/.codex/config.toml" << 'EOF'
+[user]
+keep = true
+EOF
+
+(cd "$CODEX_USER_CONFIG_INIT_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" init --agents codex --skills aif > "$TMPDIR/init-codex-user-config.log" 2>&1)
+assert_contains "$TMPDIR/init-codex-user-config.log" "Existing untracked config file \"config\\.toml\" detected" "Codex init must warn when preserving pre-existing untracked config"
+assert_contains "$TMPDIR/init-codex-user-config.log" "Managed config files: 0" "Codex init must not mark preserved user config as managed"
+assert_contains "$CODEX_USER_CONFIG_INIT_PROJECT_DIR/.codex/config.toml" "\\[user\\]" "Codex init must preserve pre-existing user config"
+assert_contains "$CODEX_USER_CONFIG_INIT_PROJECT_DIR/.codex/config.toml" "keep = true" "Codex init must preserve pre-existing user config content"
+assert_not_contains "$CODEX_USER_CONFIG_INIT_PROJECT_DIR/.codex/config.toml" "\\[agents\\]" "Codex init must not overwrite user config with managed defaults"
+EXPECTED_CODEX_AGENT_FILES="$EXPECTED_CODEX_AGENT_FILES" node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];const expected=Number(process.env.EXPECTED_CODEX_AGENT_FILES);if(a.id!=='codex')process.exit(1);if(!Array.isArray(a.installedAgentFiles)||a.installedAgentFiles.length!==expected)process.exit(1);if(!a.configFiles||a.configFiles[0]!=='config.toml')process.exit(1);if(Array.isArray(a.installedConfigFiles)&&a.installedConfigFiles.includes('config.toml'))process.exit(1);if(a.managedConfigFiles&&a.managedConfigFiles['config.toml'])process.exit(1);" "$CODEX_USER_CONFIG_INIT_PROJECT_DIR/.ai-factory.json"
+
+echo "codex user-owned config init smoke tests passed"
+
 PROJECT_DIR="$TMPDIR/init-smoke-claude-codex"
 mkdir -p "$PROJECT_DIR"
 

@@ -105,6 +105,7 @@ export interface InstallConfigFilesOptions {
   projectDir: string;
   agentId: string;
   configFiles: string[];
+  installedConfigFiles?: string[];
 }
 
 interface ResolvedSkillPaths {
@@ -783,12 +784,23 @@ export async function installConfigFiles(options: InstallConfigFilesOptions): Pr
     return [];
   }
 
+  const previousInstalledSet = new Set(options.installedConfigFiles ?? []);
+  const installed: string[] = [];
+
   for (const relPath of configFiles) {
     const paths = resolveManagedConfigFilePaths(projectDir, agentId, relPath);
+    if (!previousInstalledSet.has(relPath) && await fileExists(paths.targetFile)) {
+      console.warn(
+        `Warning: Existing untracked config file "${relPath}" detected — preserving it and skipping managed install.`,
+      );
+      continue;
+    }
+
     await copyFile(paths.sourceFile, paths.targetFile);
+    installed.push(relPath);
   }
 
-  return configFiles;
+  return installed;
 }
 
 export function partitionSkills(skills: string[]): { base: string[], custom: string[] } {
@@ -1239,16 +1251,16 @@ export async function updateConfigFiles(
     const installedHash = await hashManagedFile(paths.targetFile, relPath);
     const previousState = previousManaged[relPath];
 
-    if (force) {
-      shouldInstall.set(relPath, { install: true, reason: 'force-clean-reinstall' });
-      continue;
-    }
-
     if (!previousInstalledSet.has(relPath) && installedHash) {
       console.warn(
         `Warning: Existing untracked config file "${relPath}" detected — preserving it and skipping managed install.`,
       );
       shouldInstall.set(relPath, { install: false, reason: 'untracked-target-exists' });
+      continue;
+    }
+
+    if (force) {
+      shouldInstall.set(relPath, { install: true, reason: 'force-clean-reinstall' });
       continue;
     }
 

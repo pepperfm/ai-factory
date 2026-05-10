@@ -220,11 +220,13 @@ export async function initCommand(options: InitOptions = {}): Promise<void> {
           agentsDir: agentConfig.agentsDir,
         })
         : [];
+      const existingAgent = existingConfig?.agents.find(agent => agent.id === agentSelection.id);
       const installedConfigFiles = agentConfig.configFiles?.length
         ? await installConfigFiles({
           projectDir,
           agentId: agentSelection.id,
           configFiles: agentConfig.configFiles,
+          installedConfigFiles: existingAgent?.installedConfigFiles,
         })
         : [];
 

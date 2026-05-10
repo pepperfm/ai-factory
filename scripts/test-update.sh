@@ -471,12 +471,22 @@ keep = true
 EOF
 
 CODEX_USER_CONFIG_OUTPUT="$TMPDIR/update-codex-user-config.log"
+CODEX_USER_CONFIG_FORCE_OUTPUT="$TMPDIR/update-codex-user-config-force.log"
 (cd "$CODEX_USER_CONFIG_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update > "$CODEX_USER_CONFIG_OUTPUT" 2>&1)
 assert_contains "$CODEX_USER_CONFIG_OUTPUT" "Existing untracked config file \"config\\.toml\" detected" "untracked Codex config warning must be printed"
 assert_contains "$CODEX_USER_CONFIG_OUTPUT" "config\\.toml \(untracked file exists\)" "untracked Codex config must be skipped"
 assert_contains "$CODEX_USER_CONFIG_PROJECT_DIR/.codex/config.toml" "\\[user\\]" "user-owned Codex config must be preserved"
 assert_contains "$CODEX_USER_CONFIG_PROJECT_DIR/.codex/config.toml" "keep = true" "user-owned Codex config content must be preserved"
 assert_not_contains "$CODEX_USER_CONFIG_PROJECT_DIR/.codex/config.toml" "\\[agents\\]" "user-owned Codex config must not be overwritten by bundled defaults"
+node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if(a.id!=='codex')process.exit(1);if(!Array.isArray(a.configFiles)||!a.configFiles.includes('config.toml'))process.exit(1);if(Array.isArray(a.installedConfigFiles)&&a.installedConfigFiles.includes('config.toml'))process.exit(1);if(a.managedConfigFiles&&a.managedConfigFiles['config.toml'])process.exit(1);" "$CODEX_USER_CONFIG_PROJECT_DIR/.ai-factory.json"
+
+(cd "$CODEX_USER_CONFIG_PROJECT_DIR" && node "$ROOT_DIR/dist/cli/index.js" update --force > "$CODEX_USER_CONFIG_FORCE_OUTPUT" 2>&1)
+assert_contains "$CODEX_USER_CONFIG_FORCE_OUTPUT" "Force mode enabled" "force update must print force mode"
+assert_contains "$CODEX_USER_CONFIG_FORCE_OUTPUT" "Existing untracked config file \"config\\.toml\" detected" "force update must warn when preserving untracked Codex config"
+assert_contains "$CODEX_USER_CONFIG_FORCE_OUTPUT" "config\\.toml \(untracked file exists\)" "force update must skip untracked Codex config"
+assert_contains "$CODEX_USER_CONFIG_PROJECT_DIR/.codex/config.toml" "\\[user\\]" "force update must preserve user-owned Codex config"
+assert_contains "$CODEX_USER_CONFIG_PROJECT_DIR/.codex/config.toml" "keep = true" "force update must preserve user-owned Codex config content"
+assert_not_contains "$CODEX_USER_CONFIG_PROJECT_DIR/.codex/config.toml" "\\[agents\\]" "force update must not overwrite user-owned Codex config"
 node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync(process.argv[1],'utf8'));const a=c.agents[0];if(a.id!=='codex')process.exit(1);if(!Array.isArray(a.configFiles)||!a.configFiles.includes('config.toml'))process.exit(1);if(Array.isArray(a.installedConfigFiles)&&a.installedConfigFiles.includes('config.toml'))process.exit(1);if(a.managedConfigFiles&&a.managedConfigFiles['config.toml'])process.exit(1);" "$CODEX_USER_CONFIG_PROJECT_DIR/.ai-factory.json"
 
 echo "codex user-owned config migration smoke tests passed"
